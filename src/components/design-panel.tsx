@@ -1,0 +1,322 @@
+'use client';
+
+import { useState, useEffect, useCallback } from 'react';
+import { ImagePreview } from './image-preview';
+
+interface DesignTask {
+  id: string;
+  design_status: string;
+  design_url: string | null;
+  designer_note: string | null;
+  review_items: {
+    id: string;
+    category: string;
+    review_status: string;
+    submissions: { id: string; area: string; store_name: string };
+    images: { id: string; image_url: string };
+  };
+}
+
+const STATUS_OPTIONS = [
+  { value: 'pending', label: '待设计', color: '#faad14', bg: '#fffbe6' },
+  { value: 'designing', label: '设计中', color: '#722ed1', bg: '#f9f0ff' },
+  { value: 'completed', label: '已完成', color: '#1677ff', bg: '#e6f4ff' },
+  { value: 'confirmed', label: '已确认', color: '#52c41a', bg: '#f6ffed' },
+];
+
+const STATUS_FILTER = ['all', 'pending', 'designing', 'completed', 'confirmed'];
+const STATUS_LABELS: Record<string, string> = {
+  all: '全部',
+  pending: '待设计',
+  designing: '设计中',
+  completed: '已完成',
+  confirmed: '已确认',
+};
+
+export function DesignPanel({ onDataChange }: { onDataChange: () => void }) {
+  const [tasks, setTasks] = useState<DesignTask[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [editingNote, setEditingNote] = useState<string | null>(null);
+  const [noteText, setNoteText] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const fetchTasks = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/design${statusFilter !== 'all' ? `?status=${statusFilter}` : ''}`);
+      const json = await res.json();
+      if (json.success) setTasks(json.data);
+    } catch {
+      // silently handle
+    } finally {
+      setLoading(false);
+    }
+  }, [statusFilter]);
+
+  useEffect(() => {
+    fetchTasks();
+  }, [fetchTasks]);
+
+  const handleStatusChange = async (taskId: string, newStatus: string) => {
+    setSaving(true);
+    try {
+      const res = await fetch('/api/design', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'update', id: taskId, design_status: newStatus }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setTasks(prev => prev.map(t => t.id === taskId ? { ...t, design_status: newStatus } : t));
+        onDataChange();
+      }
+    } catch {
+      // silently handle
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveNote = async (taskId: string) => {
+    setSaving(true);
+    try {
+      const res = await fetch('/api/design', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'update', id: taskId, designer_note: noteText }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setTasks(prev => prev.map(t => t.id === taskId ? { ...t, designer_note: noteText } : t));
+        setEditingNote(null);
+      }
+    } catch {
+      // silently handle
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleUploadDesign = async (taskId: string) => {
+    // In a real app, this would open a file picker and upload
+    // For now, we simulate with a prompt
+    const url = prompt('请输入设计稿图片URL:');
+    if (!url) return;
+
+    setSaving(true);
+    try {
+      const res = await fetch('/api/design', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'update', id: taskId, design_url: url }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setTasks(prev => prev.map(t => t.id === taskId ? { ...t, design_url: url } : t));
+      }
+    } catch {
+      // silently handle
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Group by category
+  const groupedTasks: Record<string, DesignTask[]> = {};
+  tasks.forEach(task => {
+    const cat = task.review_items?.category ?? '其他';
+    if (!groupedTasks[cat]) groupedTasks[cat] = [];
+    groupedTasks[cat].push(task);
+  });
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64 text-gray-400">
+        <svg className="animate-spin h-5 w-5 mr-2" viewBox="0 0 24 24" fill="none">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+        </svg>
+        加载中...
+      </div>
+    );
+  }
+
+  if (tasks.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 text-gray-400">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+          <line x1="3" y1="9" x2="21" y2="9" />
+          <line x1="9" y1="21" x2="9" y2="9" />
+        </svg>
+        <p className="mt-4 text-sm">暂无设计任务</p>
+        <p className="text-xs mt-1">完成画面审核后，标记为"需要更新"的项目会自动流入此步骤</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Status Filter */}
+      <div className="bg-white rounded-xl p-4 border border-gray-100">
+        <div className="flex flex-wrap gap-2">
+          {STATUS_FILTER.map(status => (
+            <button
+              key={status}
+              onClick={() => setStatusFilter(status)}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                statusFilter === status
+                  ? 'bg-[#1677ff] text-white'
+                  : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              {STATUS_LABELS[status]}
+              {status !== 'all' && (
+                <span className="ml-1 text-xs opacity-75">
+                  ({tasks.filter(t => status === 'all' || t.design_status === status).length})
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Tasks by Category */}
+      {Object.entries(groupedTasks).map(([category, categoryTasks]) => (
+        <div key={category} className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+          <div className="px-5 py-3 border-b border-gray-50 bg-gray-50/50">
+            <h3 className="text-sm font-semibold text-gray-700">{category} ({categoryTasks.length})</h3>
+          </div>
+          <div className="divide-y divide-gray-50">
+            {categoryTasks.map(task => {
+              const submission = task.review_items?.submissions;
+              const image = task.review_items?.images;
+              const statusInfo = STATUS_OPTIONS.find(s => s.value === task.design_status) ?? STATUS_OPTIONS[0];
+
+              return (
+                <div key={task.id} className="px-5 py-4">
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    {/* Original Image */}
+                    <div className="shrink-0">
+                      <div
+                        className="w-24 h-24 rounded-lg overflow-hidden bg-gray-50 cursor-pointer"
+                        onClick={() => image?.image_url && setPreviewImage(image.image_url)}
+                      >
+                        {image?.image_url ? (
+                          <img src={image.image_url} alt="原图" className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-gray-300">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                              <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                              <circle cx="8.5" cy="8.5" r="1.5" />
+                              <polyline points="21 15 16 10 5 21" />
+                            </svg>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <div>
+                          <div className="font-medium text-gray-900">{submission?.store_name ?? '未知门店'}</div>
+                          <div className="text-xs text-gray-500">{submission?.area} · {category}</div>
+                        </div>
+                        <span
+                          className="shrink-0 px-2.5 py-0.5 rounded-full text-xs font-medium"
+                          style={{ backgroundColor: statusInfo.bg, color: statusInfo.color }}
+                        >
+                          {statusInfo.label}
+                        </span>
+                      </div>
+
+                      {/* Design Preview */}
+                      <div className="flex items-center gap-3 mb-2">
+                        {task.design_url ? (
+                          <div
+                            className="w-16 h-16 rounded-lg overflow-hidden bg-gray-50 cursor-pointer border-2 border-[#1677ff]"
+                            onClick={() => setPreviewImage(task.design_url!)}
+                          >
+                            <img src={task.design_url} alt="设计稿" className="w-full h-full object-cover" />
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => handleUploadDesign(task.id)}
+                            disabled={saving}
+                            className="w-16 h-16 rounded-lg border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-400 hover:border-[#1677ff] hover:text-[#1677ff] transition-colors"
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <line x1="12" y1="5" x2="12" y2="19" />
+                              <line x1="5" y1="12" x2="19" y2="12" />
+                            </svg>
+                            <span className="text-[10px] mt-0.5">上传</span>
+                          </button>
+                        )}
+
+                        {/* Status Selector */}
+                        <select
+                          value={task.design_status}
+                          onChange={(e) => handleStatusChange(task.id, e.target.value)}
+                          disabled={saving}
+                          className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1677ff]/20 focus:border-[#1677ff]"
+                        >
+                          {STATUS_OPTIONS.map(opt => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Note */}
+                      <div className="flex items-center gap-2">
+                        {editingNote === task.id ? (
+                          <div className="flex items-center gap-2 flex-1">
+                            <input
+                              type="text"
+                              value={noteText}
+                              onChange={(e) => setNoteText(e.target.value)}
+                              placeholder="输入设计师备注..."
+                              className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#1677ff]/20 focus:border-[#1677ff]"
+                              autoFocus
+                            />
+                            <button
+                              onClick={() => handleSaveNote(task.id)}
+                              disabled={saving}
+                              className="px-3 py-1.5 bg-[#1677ff] text-white text-xs rounded-lg hover:bg-[#4096ff] disabled:opacity-50"
+                            >
+                              保存
+                            </button>
+                            <button
+                              onClick={() => setEditingNote(null)}
+                              className="px-3 py-1.5 bg-gray-100 text-gray-600 text-xs rounded-lg hover:bg-gray-200"
+                            >
+                              取消
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => { setEditingNote(task.id); setNoteText(task.designer_note ?? ''); }}
+                            className="text-xs text-gray-400 hover:text-[#1677ff] transition-colors"
+                          >
+                            {task.designer_note ? `备注: ${task.designer_note}` : '+ 添加备注'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+
+      {/* Image Preview */}
+      {previewImage && (
+        <ImagePreview url={previewImage} onClose={() => setPreviewImage(null)} />
+      )}
+    </div>
+  );
+}
