@@ -348,7 +348,7 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
                                       status === 'rejected' ? 'bg-[#ff4d4f]' :
                                       'bg-gray-400'
                                     }`}>
-                                      {status === 'approved' ? '不更新' : '需更新'}
+                                      {status === 'approved' ? '✓ 不更新' : '🔄 需更新'}
                                     </div>
                                   )}
                                 </div>
@@ -362,7 +362,7 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
                                         : 'bg-green-50 text-[#52c41a] hover:bg-green-100'
                                     } disabled:opacity-40`}
                                   >
-                                    ✅ 不更新
+                                    ✓ 不更新
                                   </button>
                                   <button
                                     onClick={() => handleReview(img.id, 'rejected')}
