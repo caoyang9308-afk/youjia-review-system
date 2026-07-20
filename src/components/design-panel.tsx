@@ -101,27 +101,44 @@ export function DesignPanel({ onDataChange }: { onDataChange: () => void }) {
   };
 
   const handleUploadDesign = async (taskId: string) => {
-    // In a real app, this would open a file picker and upload
-    // For now, we simulate with a prompt
-    const url = prompt('请输入设计稿图片URL:');
-    if (!url) return;
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/jpeg,image/png,image/webp,image/gif';
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
 
-    setSaving(true);
-    try {
-      const res = await fetch('/api/design', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'update', id: taskId, design_url: url }),
-      });
-      const json = await res.json();
-      if (json.success) {
-        setTasks(prev => prev.map(t => t.id === taskId ? { ...t, design_url: url } : t));
+      setSaving(true);
+      try {
+        // Upload file
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('bucket', 'design-files');
+        const uploadRes = await fetch('/api/upload', { method: 'POST', body: formData });
+        const uploadJson = await uploadRes.json();
+        if (!uploadJson.success) {
+          alert(uploadJson.error || '上传失败');
+          return;
+        }
+        const url = uploadJson.data.url;
+
+        // Update design task
+        const res = await fetch('/api/design', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'update', id: taskId, design_url: url }),
+        });
+        const json = await res.json();
+        if (json.success) {
+          setTasks(prev => prev.map(t => t.id === taskId ? { ...t, design_url: url } : t));
+        }
+      } catch {
+        alert('上传失败，请重试');
+      } finally {
+        setSaving(false);
       }
-    } catch {
-      // silently handle
-    } finally {
-      setSaving(false);
-    }
+    };
+    input.click();
   };
 
   // Group by category (translate English keys to Chinese)

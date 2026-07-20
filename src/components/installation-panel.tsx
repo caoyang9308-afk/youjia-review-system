@@ -136,25 +136,44 @@ export function InstallationPanel({ onDataChange }: { onDataChange: () => void }
   };
 
   const handleUploadReturnPhoto = async (taskId: string) => {
-    const url = prompt('请输入返图照片URL:');
-    if (!url) return;
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/jpeg,image/png,image/webp,image/gif';
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
 
-    setSaving(true);
-    try {
-      const res = await fetch('/api/installation', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'update', id: taskId, return_photo_url: url }),
-      });
-      const json = await res.json();
-      if (json.success) {
-        setTasks(prev => prev.map(t => t.id === taskId ? { ...t, return_photo_url: url } : t));
+      setSaving(true);
+      try {
+        // Upload file
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('bucket', 'return-photos');
+        const uploadRes = await fetch('/api/upload', { method: 'POST', body: formData });
+        const uploadJson = await uploadRes.json();
+        if (!uploadJson.success) {
+          alert(uploadJson.error || '上传失败');
+          return;
+        }
+        const url = uploadJson.data.url;
+
+        // Update installation task
+        const res = await fetch('/api/installation', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'update', id: taskId, return_photo_url: url }),
+        });
+        const json = await res.json();
+        if (json.success) {
+          setTasks(prev => prev.map(t => t.id === taskId ? { ...t, return_photo_url: url } : t));
+        }
+      } catch {
+        alert('上传失败，请重试');
+      } finally {
+        setSaving(false);
       }
-    } catch {
-      // silently handle
-    } finally {
-      setSaving(false);
-    }
+    };
+    input.click();
   };
 
   if (loading) {
@@ -354,14 +373,36 @@ export function InstallationPanel({ onDataChange }: { onDataChange: () => void }
                         />
                       </div>
                       <div>
-                        <label className="text-xs text-gray-500 mb-1 block">返图URL</label>
-                        <input
-                          type="text"
-                          value={editForm.return_photo_url}
-                          onChange={(e) => setEditForm(prev => ({ ...prev, return_photo_url: e.target.value }))}
-                          placeholder="输入返图照片URL"
-                          className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-[#1677ff]/20 focus:border-[#1677ff]"
-                        />
+                        <label className="text-xs text-gray-500 mb-1 block">返图照片</label>
+                        <div className="flex items-center gap-2">
+                          {editForm.return_photo_url ? (
+                            <img src={editForm.return_photo_url} alt="返图" className="w-10 h-10 rounded object-cover" />
+                          ) : null}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const input = document.createElement('input');
+                              input.type = 'file';
+                              input.accept = 'image/jpeg,image/png,image/webp';
+                              input.onchange = async (e) => {
+                                const file = (e.target as HTMLInputElement).files?.[0];
+                                if (!file) return;
+                                const fd = new FormData();
+                                fd.append('file', file);
+                                fd.append('bucket', 'return-photos');
+                                const res = await fetch('/api/upload', { method: 'POST', body: fd });
+                                const json = await res.json();
+                                if (json.success) {
+                                  setEditForm(prev => ({ ...prev, return_photo_url: json.data.url }));
+                                }
+                              };
+                              input.click();
+                            }}
+                            className="px-3 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                          >
+                            {editForm.return_photo_url ? '更换' : '选择图片'}
+                          </button>
+                        </div>
                       </div>
                       <div className="sm:col-span-2">
                         <label className="text-xs text-gray-500 mb-1 block">安装备注</label>
