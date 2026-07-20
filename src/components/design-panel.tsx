@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { ImagePreview } from './image-preview';
+import { toChineseCategory } from '@/lib/constants';
 
 interface DesignTask {
   id: string;
@@ -123,10 +124,10 @@ export function DesignPanel({ onDataChange }: { onDataChange: () => void }) {
     }
   };
 
-  // Group by category
+  // Group by category (translate English keys to Chinese)
   const groupedTasks: Record<string, DesignTask[]> = {};
   tasks.forEach(task => {
-    const cat = task.review_items?.category ?? '其他';
+    const cat = toChineseCategory(task.review_items?.category ?? '其他');
     if (!groupedTasks[cat]) groupedTasks[cat] = [];
     groupedTasks[cat].push(task);
   });

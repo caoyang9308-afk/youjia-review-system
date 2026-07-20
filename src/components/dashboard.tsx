@@ -1,5 +1,7 @@
 'use client';
 
+import { CATEGORIES_ZH } from '@/lib/constants';
+
 export interface DashboardData {
   totalStores: number;
   totalImages: number;
@@ -9,16 +11,6 @@ export interface DashboardData {
   areas: Record<string, { total: number }>;
   categories: Record<string, { total: number; reviewed: number; pending: number }>;
 }
-
-const CATEGORIES = [
-  '店招门头',
-  '店内软膜灯箱',
-  '店内发光字',
-  '品牌荣誉墙',
-  '门店物料',
-  '商场内品牌灯箱广告',
-  '商场外/户外广告画面',
-];
 
 export function Dashboard({ data }: { data: DashboardData | null }) {
   if (!data || (data.totalStores === 0 && data.totalImages === 0)) {
@@ -133,7 +125,7 @@ export function Dashboard({ data }: { data: DashboardData | null }) {
                 </tr>
               </thead>
               <tbody>
-                {CATEGORIES.map(cat => {
+                {CATEGORIES_ZH.map(cat => {
                   const catData = data.categories[cat] || { total: 0, reviewed: 0, pending: 0 };
                   const progress = catData.total > 0 ? (catData.reviewed / catData.total) * 100 : 0;
                   if (catData.total === 0) return null;

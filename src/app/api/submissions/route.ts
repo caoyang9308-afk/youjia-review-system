@@ -10,7 +10,8 @@ export async function GET(request: NextRequest) {
     let query = client
       .from('submissions')
       .select('*, images(*)')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(10000);
 
     if (area && area !== '全部') {
       query = query.eq('area', area);

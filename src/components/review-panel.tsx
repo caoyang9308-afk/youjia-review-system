@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { ImagePreview } from './image-preview';
+import { CATEGORIES_ZH, CATEGORY_REVERSE_MAP, AREAS } from '@/lib/constants';
 
 interface Image {
   id: string;
@@ -27,16 +28,15 @@ interface ReviewItem {
   review_note: string | null;
 }
 
-const AREAS = ['全部', '苏州一区', '苏州二区', '苏州三区', '苏州四区', '苏州五区', '南京区域', '无锡区域', '浙江区域'];
-const CATEGORIES = [
-  '店招门头',
-  '店内软膜灯箱',
-  '店内发光字',
-  '品牌荣誉墙',
-  '门店物料',
-  '商场内品牌灯箱广告',
-  '商场外/户外广告画面',
-];
+// Map English category key to Chinese display name
+function categoryDisplay(cat: string): string {
+  const reverseMap = CATEGORY_REVERSE_MAP;
+  // If it's already Chinese, return as-is
+  if (CATEGORIES_ZH.includes(cat)) return cat;
+  // If it's English key, look up in reverse map (zh->en), find the en->zh mapping
+  const entry = Object.entries(reverseMap).find(([, en]) => en === cat);
+  return entry ? entry[0] : cat;
+}
 
 export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
@@ -318,8 +318,10 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
                   </div>
 
                   {/* Images by Category */}
-                  {CATEGORIES.map(category => {
-                    const categoryImages = storeImages.filter(img => img.category === category);
+                  {CATEGORIES_ZH.map(category => {
+                    // Map Chinese category name to English key for filtering
+                    const enKey = CATEGORY_REVERSE_MAP[category] || category;
+                    const categoryImages = storeImages.filter(img => img.category === enKey || img.category === category);
                     if (categoryImages.length === 0) return null;
 
                     return (

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { ImagePreview } from './image-preview';
+import { toChineseCategory } from '@/lib/constants';
 
 interface InstallationTask {
   id: string;
@@ -248,7 +249,7 @@ export function InstallationPanel({ onDataChange }: { onDataChange: () => void }
                       <div>
                         <div className="font-medium text-gray-900">{submission?.store_name ?? '未知门店'}</div>
                         <div className="text-xs text-gray-500">
-                          {submission?.area} · {reviewItem?.category}
+                          {submission?.area} · {toChineseCategory(reviewItem?.category ?? '')}
                           {task.company_name && ` · ${task.company_name}`}
                         </div>
                       </div>
