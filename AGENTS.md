@@ -44,6 +44,15 @@ src/
 - `design_tasks` - 设计任务 (review_item_id, design_status, design_url, designer_note)
 - `installation_tasks` - 安装任务 (design_task_id, install_status, company_name, dispatch_date, install_date, return_photo_url)
 
+## 7个品宣分类
+1. 店招门头
+2. 店内软膜灯箱
+3. 店内发光字
+4. 品牌荣誉墙
+5. 门店物料
+6. 商场内品牌灯箱广告
+7. 商场外/户外广告画面
+
 ## 开发命令
 - `pnpm dev` - 启动开发服务
 - `pnpm build` - 构建生产版本

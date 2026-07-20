@@ -6,6 +6,7 @@ export async function GET(request: NextRequest) {
     const client = getSupabaseClient();
     const { searchParams } = new URL(request.url);
     const submissionId = searchParams.get('submission_id');
+    const status = searchParams.get('status');
 
     let query = client
       .from('review_items')
@@ -14,10 +15,13 @@ export async function GET(request: NextRequest) {
         submissions!inner(id, area, store_name),
         images!inner(id, image_url, category)
       `)
-      .order('reviewed_at', { ascending: false });
+      .order('reviewed_at', { ascending: false, nullsFirst: true });
 
     if (submissionId) {
       query = query.eq('submission_id', submissionId);
+    }
+    if (status && status !== 'all') {
+      query = query.eq('review_status', status);
     }
 
     const { data, error } = await query;
@@ -35,7 +39,7 @@ export async function POST(request: NextRequest) {
     const client = getSupabaseClient();
     const body = await request.json();
     const { action, items } = body as {
-      action: 'create' | 'update' | 'batch_update' | 'batch_create';
+      action: 'batch_create' | 'batch_update' | 'update';
       items: Array<{
         id?: string;
         submission_id?: string;
@@ -47,7 +51,6 @@ export async function POST(request: NextRequest) {
     };
 
     if (action === 'batch_create') {
-      // Create review items for all images in a submission
       const submissionId = items[0]?.submission_id;
       if (!submissionId) throw new Error('缺少 submission_id');
 
@@ -85,7 +88,6 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === 'batch_update') {
-      // Batch update review statuses
       const updates = items.filter(item => item.id && item.review_status);
       if (updates.length === 0) throw new Error('无有效更新项');
 
@@ -93,7 +95,7 @@ export async function POST(request: NextRequest) {
         const { error: updateErr } = await client
           .from('review_items')
           .update({
-            review_status: item.review_status,
+            review_status: item.review_status!,
             review_note: item.review_note ?? null,
             reviewed_at: new Date().toISOString(),
           })
@@ -104,31 +106,23 @@ export async function POST(request: NextRequest) {
       // Auto-create design tasks for rejected items (需要更新)
       const rejectedIds = updates.filter(u => u.review_status === 'rejected').map(u => u.id!);
       if (rejectedIds.length > 0) {
-        const { data: rejectedItems, error: fetchErr } = await client
-          .from('review_items')
-          .select('id')
-          .in('id', rejectedIds);
-        if (fetchErr) throw new Error(`查询需更新项失败: ${fetchErr.message}`);
+        // Check which already have design tasks
+        const { data: existingDesigns } = await client
+          .from('design_tasks')
+          .select('review_item_id')
+          .in('review_item_id', rejectedIds);
 
-        if (rejectedItems && rejectedItems.length > 0) {
-          // Check which already have design tasks
-          const { data: existingDesigns } = await client
-            .from('design_tasks')
-            .select('review_item_id')
-            .in('review_item_id', rejectedIds);
+        const existingDesignIds = new Set(existingDesigns?.map(d => d.review_item_id) ?? []);
+        const newDesignItems = rejectedIds
+          .filter(id => !existingDesignIds.has(id))
+          .map(id => ({
+            review_item_id: id,
+            design_status: 'pending',
+          }));
 
-          const existingDesignIds = new Set(existingDesigns?.map(d => d.review_item_id) ?? []);
-          const newDesignItems = rejectedItems
-            .filter(r => !existingDesignIds.has(r.id))
-            .map(r => ({
-              review_item_id: r.id,
-              design_status: 'pending',
-            }));
-
-          if (newDesignItems.length > 0) {
-            const { error: designErr } = await client.from('design_tasks').insert(newDesignItems);
-            if (designErr) throw new Error(`创建设计任务失败: ${designErr.message}`);
-          }
+        if (newDesignItems.length > 0) {
+          const { error: designErr } = await client.from('design_tasks').insert(newDesignItems);
+          if (designErr) throw new Error(`创建设计任务失败: ${designErr.message}`);
         }
       }
 
@@ -140,7 +134,7 @@ export async function POST(request: NextRequest) {
       const { data, error: updateErr } = await client
         .from('review_items')
         .update({
-          review_status: item.review_status,
+          review_status: item.review_status!,
           review_note: item.review_note ?? null,
           reviewed_at: new Date().toISOString(),
         })
@@ -148,22 +142,23 @@ export async function POST(request: NextRequest) {
         .select()
         .maybeSingle();
       if (updateErr) throw new Error(`更新审核项失败: ${updateErr.message}`);
-      return NextResponse.json({ success: true, data });
-    }
 
-    if (action === 'create' && items[0]) {
-      const item = items[0];
-      const { data, error: insertErr } = await client
-        .from('review_items')
-        .insert({
-          submission_id: item.submission_id!,
-          image_id: item.image_id!,
-          category: item.category!,
-          review_status: item.review_status ?? 'pending',
-        })
-        .select()
-        .maybeSingle();
-      if (insertErr) throw new Error(`创建审核项失败: ${insertErr.message}`);
+      // If rejected, auto-create design task
+      if (item.review_status === 'rejected' && data) {
+        const { data: existingDesign } = await client
+          .from('design_tasks')
+          .select('id')
+          .eq('review_item_id', item.id)
+          .maybeSingle();
+
+        if (!existingDesign) {
+          const { error: designErr } = await client
+            .from('design_tasks')
+            .insert({ review_item_id: item.id, design_status: 'pending' });
+          if (designErr) throw new Error(`创建设计任务失败: ${designErr.message}`);
+        }
+      }
+
       return NextResponse.json({ success: true, data });
     }
 

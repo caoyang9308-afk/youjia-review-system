@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
       .select('*, images(*)')
       .order('created_at', { ascending: false });
 
-    if (area && area !== 'all') {
+    if (area && area !== '全部') {
       query = query.eq('area', area);
     }
 

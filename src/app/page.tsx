@@ -1,19 +1,10 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Dashboard } from '@/components/dashboard';
+import { Dashboard, DashboardData } from '@/components/dashboard';
 import { ReviewPanel } from '@/components/review-panel';
 import { DesignPanel } from '@/components/design-panel';
 import { InstallationPanel } from '@/components/installation-panel';
-
-interface DashboardData {
-  totalStores: number;
-  review: { pending: number; approved: number; rejected: number; total: number };
-  design: { pending: number; designing: number; completed: number; confirmed: number; total: number };
-  installation: { pending: number; dispatched: number; installing: number; completed: number; total: number };
-  areas: Record<string, { total: number; completed: number }>;
-  categories: Record<string, { total: number; approved: number; rejected: number; pending: number }>;
-}
 
 const TABS = [
   { key: 'dashboard', label: '概览' },

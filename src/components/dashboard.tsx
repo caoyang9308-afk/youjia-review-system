@@ -1,33 +1,27 @@
 'use client';
 
-interface DashboardData {
+export interface DashboardData {
   totalStores: number;
+  totalImages: number;
   review: { pending: number; approved: number; rejected: number; total: number };
   design: { pending: number; designing: number; completed: number; confirmed: number; total: number };
   installation: { pending: number; dispatched: number; installing: number; completed: number; total: number };
-  areas: Record<string, { total: number; completed: number }>;
-  categories: Record<string, { total: number; approved: number; rejected: number; pending: number }>;
+  areas: Record<string, { total: number }>;
+  categories: Record<string, { total: number; reviewed: number; pending: number }>;
 }
 
-const CATEGORIES = ['门头', '吧台', '墙面', '菜单', '灯箱', '外卖窗口', '其他'];
+const CATEGORIES = [
+  '店招门头',
+  '店内软膜灯箱',
+  '店内发光字',
+  '品牌荣誉墙',
+  '门店物料',
+  '商场内品牌灯箱广告',
+  '商场外/户外广告画面',
+];
 
 export function Dashboard({ data }: { data: DashboardData | null }) {
-  if (!data) {
-    return (
-      <div className="flex flex-col items-center justify-center h-64 text-gray-400">
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-          <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
-          <polyline points="13 2 13 9 20 9" />
-        </svg>
-        <p className="mt-4 text-sm">暂无门店上传数据</p>
-        <p className="text-xs mt-1">请先让门店通过上传入口提交图片</p>
-      </div>
-    );
-  }
-
-  const hasData = data.totalStores > 0;
-
-  if (!hasData) {
+  if (!data || (data.totalStores === 0 && data.totalImages === 0)) {
     return (
       <div className="flex flex-col items-center justify-center h-64 text-gray-400">
         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -42,9 +36,10 @@ export function Dashboard({ data }: { data: DashboardData | null }) {
 
   const statCards = [
     { label: '总门店数', value: data.totalStores, color: '#1677ff', bg: '#e6f4ff' },
+    { label: '总图片数', value: data.totalImages, color: '#13c2c2', bg: '#e6fffb' },
     { label: '待审核', value: data.review.pending, color: '#faad14', bg: '#fffbe6' },
     { label: '设计中', value: data.design.designing + data.design.pending, color: '#722ed1', bg: '#f9f0ff' },
-    { label: '安装中', value: data.installation.installing + data.installation.dispatched, color: '#13c2c2', bg: '#e6fffb' },
+    { label: '安装中', value: data.installation.installing + data.installation.dispatched, color: '#1677ff', bg: '#e6f4ff' },
     { label: '已完成', value: data.installation.completed, color: '#52c41a', bg: '#f6ffed' },
   ];
 
@@ -54,7 +49,7 @@ export function Dashboard({ data }: { data: DashboardData | null }) {
   return (
     <div className="space-y-6">
       {/* Stat Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
         {statCards.map(card => (
           <div key={card.label} className="bg-white rounded-xl p-5 border border-gray-100">
             <div className="text-sm text-gray-500 mb-2">{card.label}</div>
@@ -125,35 +120,32 @@ export function Dashboard({ data }: { data: DashboardData | null }) {
       {/* Category Stats */}
       {Object.keys(data.categories).length > 0 && (
         <div className="bg-white rounded-xl p-6 border border-gray-100">
-          <h3 className="text-base font-semibold text-gray-900 mb-4">分类审核统计</h3>
+          <h3 className="text-base font-semibold text-gray-900 mb-4">分类上传统计</h3>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100">
                   <th className="text-left py-2 px-3 text-gray-500 font-medium">分类</th>
-                  <th className="text-center py-2 px-3 text-gray-500 font-medium">总数</th>
+                  <th className="text-center py-2 px-3 text-gray-500 font-medium">图片总数</th>
+                  <th className="text-center py-2 px-3 text-gray-500 font-medium">已审核</th>
                   <th className="text-center py-2 px-3 text-gray-500 font-medium">待审核</th>
-                  <th className="text-center py-2 px-3 text-gray-500 font-medium">已通过</th>
-                  <th className="text-center py-2 px-3 text-gray-500 font-medium">需更新</th>
                   <th className="text-left py-2 px-3 text-gray-500 font-medium w-40">进度</th>
                 </tr>
               </thead>
               <tbody>
                 {CATEGORIES.map(cat => {
-                  const catData = data.categories[cat] || { total: 0, approved: 0, rejected: 0, pending: 0 };
-                  const progress = catData.total > 0 ? ((catData.approved + catData.rejected) / catData.total) * 100 : 0;
+                  const catData = data.categories[cat] || { total: 0, reviewed: 0, pending: 0 };
+                  const progress = catData.total > 0 ? (catData.reviewed / catData.total) * 100 : 0;
+                  if (catData.total === 0) return null;
                   return (
                     <tr key={cat} className="border-b border-gray-50 hover:bg-gray-50/50">
                       <td className="py-2.5 px-3 text-gray-700">{cat}</td>
                       <td className="py-2.5 px-3 text-center text-gray-600">{catData.total}</td>
                       <td className="py-2.5 px-3 text-center">
+                        <span className="text-[#52c41a]">{catData.reviewed}</span>
+                      </td>
+                      <td className="py-2.5 px-3 text-center">
                         <span className="text-[#faad14]">{catData.pending}</span>
-                      </td>
-                      <td className="py-2.5 px-3 text-center">
-                        <span className="text-[#52c41a]">{catData.approved}</span>
-                      </td>
-                      <td className="py-2.5 px-3 text-center">
-                        <span className="text-[#ff4d4f]">{catData.rejected}</span>
                       </td>
                       <td className="py-2.5 px-3">
                         <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">

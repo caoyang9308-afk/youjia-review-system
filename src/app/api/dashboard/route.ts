@@ -11,10 +11,16 @@ export async function GET() {
       .select('*', { count: 'exact', head: true });
     if (storeErr) throw new Error(`统计门店数失败: ${storeErr.message}`);
 
+    // Get total images count
+    const { count: totalImages, error: imgErr } = await client
+      .from('images')
+      .select('*', { count: 'exact', head: true });
+    if (imgErr) throw new Error(`统计图片数失败: ${imgErr.message}`);
+
     // Get review stats
     const { data: reviewItems, error: reviewErr } = await client
       .from('review_items')
-      .select('review_status');
+      .select('review_status, category');
     if (reviewErr) throw new Error(`统计审核失败: ${reviewErr.message}`);
 
     const pendingReview = reviewItems?.filter(r => r.review_status === 'pending').length ?? 0;
@@ -49,31 +55,45 @@ export async function GET() {
       .select('area, id');
     if (subErr) throw new Error(`获取区域数据失败: ${subErr.message}`);
 
-    const areaMap: Record<string, { total: number; completed: number }> = {};
+    const areaMap: Record<string, { total: number }> = {};
     submissions?.forEach(s => {
-      if (!areaMap[s.area]) areaMap[s.area] = { total: 0, completed: 0 };
+      if (!areaMap[s.area]) areaMap[s.area] = { total: 0 };
       areaMap[s.area].total++;
     });
 
-    // Get category stats from review items
-    const { data: reviewWithCategory, error: catErr } = await client
-      .from('review_items')
-      .select('category, review_status');
+    // Get category stats from images
+    const { data: allImages, error: catErr } = await client
+      .from('images')
+      .select('category');
     if (catErr) throw new Error(`获取分类统计失败: ${catErr.message}`);
 
-    const categoryMap: Record<string, { total: number; approved: number; rejected: number; pending: number }> = {};
-    reviewWithCategory?.forEach(r => {
-      if (!categoryMap[r.category]) categoryMap[r.category] = { total: 0, approved: 0, rejected: 0, pending: 0 };
-      categoryMap[r.category].total++;
-      if (r.review_status === 'approved') categoryMap[r.category].approved++;
-      else if (r.review_status === 'rejected') categoryMap[r.category].rejected++;
-      else categoryMap[r.category].pending++;
+    const categoryMap: Record<string, { total: number; reviewed: number; pending: number }> = {};
+    allImages?.forEach(img => {
+      if (!categoryMap[img.category]) categoryMap[img.category] = { total: 0, reviewed: 0, pending: 0 };
+      categoryMap[img.category].total++;
+    });
+
+    // Count reviewed images per category
+    reviewItems?.forEach(r => {
+      if (categoryMap[r.category]) {
+        if (r.review_status !== 'pending') {
+          categoryMap[r.category].reviewed++;
+        }
+      } else {
+        categoryMap[r.category] = { total: 0, reviewed: 0, pending: 0 };
+      }
+    });
+
+    // Calculate pending per category
+    Object.keys(categoryMap).forEach(cat => {
+      categoryMap[cat].pending = categoryMap[cat].total - categoryMap[cat].reviewed;
     });
 
     return NextResponse.json({
       success: true,
       data: {
         totalStores: totalStores ?? 0,
+        totalImages: totalImages ?? 0,
         review: {
           pending: pendingReview,
           approved: approvedReview,

@@ -28,7 +28,15 @@ interface ReviewItem {
 }
 
 const AREAS = ['全部', '苏州一区', '苏州二区', '苏州三区', '苏州四区', '苏州五区', '南京区域', '无锡区域', '浙江区域'];
-const CATEGORIES = ['门头', '吧台', '墙面', '菜单', '灯箱', '外卖窗口', '其他'];
+const CATEGORIES = [
+  '店招门头',
+  '店内软膜灯箱',
+  '店内发光字',
+  '品牌荣誉墙',
+  '门店物料',
+  '商场内品牌灯箱广告',
+  '商场外/户外广告画面',
+];
 
 export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
@@ -63,14 +71,14 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
 
   const getReviewStatus = (imageId: string): string => {
     const item = reviewItems.find(r => r.image_id === imageId);
-    return item?.review_status ?? 'pending';
+    return item?.review_status ?? 'uninitialized';
   };
 
   const getReviewItemId = (imageId: string): string | undefined => {
     return reviewItems.find(r => r.image_id === imageId)?.id;
   };
 
-  const handleReview = async (imageId: string, status: 'approved' | 'rejected' | 'skipped') => {
+  const handleReview = async (imageId: string, status: 'approved' | 'rejected') => {
     const reviewItemId = getReviewItemId(imageId);
     if (!reviewItemId) return;
 
@@ -121,8 +129,7 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
     }
   };
 
-  const handleBatchApprove = async (_submissionId: string, images: Image[]) => {
-    // Get pending items
+  const handleBatchApprove = async (images: Image[]) => {
     const pendingItems = images
       .filter(img => getReviewStatus(img.id) === 'pending')
       .map(img => ({
@@ -157,15 +164,15 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
 
   // Stats
   const totalImages = submissions.reduce((acc, s) => acc + s.images.length, 0);
-  const reviewedCount = submissions.reduce(
-    (acc, s) => acc + s.images.filter(img => getReviewStatus(img.id) !== 'pending').length,
-    0
-  );
-  const needUpdateCount = submissions.reduce(
-    (acc, s) => acc + s.images.filter(img => getReviewStatus(img.id) === 'rejected').length,
-    0
-  );
-  const pendingCount = totalImages - reviewedCount;
+  const reviewedCount = reviewItems.filter(r =>
+    submissions.some(s => s.id === r.submission_id) && r.review_status !== 'pending'
+  ).length;
+  const needUpdateCount = reviewItems.filter(r =>
+    submissions.some(s => s.id === r.submission_id) && r.review_status === 'rejected'
+  ).length;
+  const pendingCount = reviewItems.filter(r =>
+    submissions.some(s => s.id === r.submission_id) && r.review_status === 'pending'
+  ).length;
 
   if (loading) {
     return (
@@ -221,7 +228,7 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
         </div>
         <div className="flex items-center gap-2">
           <span className="text-sm text-gray-500">已审核</span>
-          <span className="text-lg font-bold text-[#52c41a]">{reviewedCount - pendingCount}</span>
+          <span className="text-lg font-bold text-[#52c41a]">{reviewedCount}</span>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-sm text-gray-500">待审核</span>
@@ -237,15 +244,23 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
       <div className="space-y-3">
         {submissions.map(submission => {
           const isExpanded = expandedStore === submission.id;
-          const storeReviewed = submission.images.filter(img => getReviewStatus(img.id) !== 'pending').length;
-          const storeTotal = submission.images.length;
-          const hasReviewItems = submission.images.some(img => getReviewItemId(img.id));
+          const storeImages = submission.images;
+          const storeReviewItems = reviewItems.filter(r => r.submission_id === submission.id);
+          const storeReviewed = storeReviewItems.filter(r => r.review_status !== 'pending').length;
+          const storeTotal = storeImages.length;
+          const hasReviewItems = storeReviewItems.length > 0;
 
           return (
             <div key={submission.id} className="bg-white rounded-xl border border-gray-100 overflow-hidden">
               {/* Store Header */}
               <button
-                onClick={() => setExpandedStore(isExpanded ? null : submission.id)}
+                onClick={() => {
+                  setExpandedStore(isExpanded ? null : submission.id);
+                  // Auto-init review when expanding
+                  if (!isExpanded && !hasReviewItems && storeTotal > 0) {
+                    handleInitReview(submission.id);
+                  }
+                }}
                 className="w-full px-5 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
               >
                 <div className="flex items-center gap-3">
@@ -262,8 +277,12 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="text-right">
-                    <div className="text-sm font-medium text-gray-700">{storeReviewed}/{storeTotal}</div>
-                    <div className="text-xs text-gray-400">已审核</div>
+                    <div className="text-sm font-medium text-gray-700">
+                      {hasReviewItems ? `${storeReviewed}/${storeTotal}` : '未审核'}
+                    </div>
+                    <div className="text-xs text-gray-400">
+                      {hasReviewItems ? '已审核' : '点击初始化'}
+                    </div>
                   </div>
                   <svg
                     width="20"
@@ -282,19 +301,11 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
               {/* Expanded Content */}
               {isExpanded && (
                 <div className="px-5 pb-5 border-t border-gray-50">
-                  {/* Init review / Batch approve */}
+                  {/* Actions */}
                   <div className="flex items-center gap-3 py-3">
-                    {!hasReviewItems ? (
+                    {hasReviewItems && (
                       <button
-                        onClick={() => handleInitReview(submission.id)}
-                        disabled={saving}
-                        className="px-4 py-2 bg-[#1677ff] text-white text-sm rounded-lg hover:bg-[#4096ff] disabled:opacity-50 transition-colors"
-                      >
-                        初始化审核
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => handleBatchApprove(submission.id, submission.images)}
+                        onClick={() => handleBatchApprove(storeImages)}
                         disabled={saving}
                         className="px-4 py-2 bg-[#52c41a] text-white text-sm rounded-lg hover:bg-[#73d13d] disabled:opacity-50 transition-colors"
                       >
@@ -308,15 +319,16 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
 
                   {/* Images by Category */}
                   {CATEGORIES.map(category => {
-                    const categoryImages = submission.images.filter(img => img.category === category);
+                    const categoryImages = storeImages.filter(img => img.category === category);
                     if (categoryImages.length === 0) return null;
 
                     return (
                       <div key={category} className="mb-4">
-                        <div className="text-sm font-medium text-gray-700 mb-2">{category}</div>
+                        <div className="text-sm font-medium text-gray-700 mb-2">{category} ({categoryImages.length})</div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                           {categoryImages.map(img => {
                             const status = getReviewStatus(img.id);
+                            const hasItem = getReviewItemId(img.id) !== undefined;
                             return (
                               <div key={img.id} className="border border-gray-100 rounded-lg overflow-hidden">
                                 <div
@@ -328,20 +340,20 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
                                     alt={`${category} - ${submission.store_name}`}
                                     className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
                                   />
-                                  {status !== 'pending' && (
+                                  {status !== 'uninitialized' && status !== 'pending' && (
                                     <div className={`absolute top-2 right-2 px-2 py-0.5 rounded text-xs font-medium text-white ${
                                       status === 'approved' ? 'bg-[#52c41a]' :
                                       status === 'rejected' ? 'bg-[#ff4d4f]' :
                                       'bg-gray-400'
                                     }`}>
-                                      {status === 'approved' ? '已通过' : status === 'rejected' ? '需更新' : '已跳过'}
+                                      {status === 'approved' ? '已通过' : '需更新'}
                                     </div>
                                   )}
                                 </div>
                                 <div className="p-2 flex gap-1.5">
                                   <button
                                     onClick={() => handleReview(img.id, 'approved')}
-                                    disabled={saving || !getReviewItemId(img.id)}
+                                    disabled={saving || !hasItem}
                                     className={`flex-1 py-1.5 text-xs rounded-md font-medium transition-colors ${
                                       status === 'approved'
                                         ? 'bg-[#52c41a] text-white'
@@ -352,7 +364,7 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
                                   </button>
                                   <button
                                     onClick={() => handleReview(img.id, 'rejected')}
-                                    disabled={saving || !getReviewItemId(img.id)}
+                                    disabled={saving || !hasItem}
                                     className={`flex-1 py-1.5 text-xs rounded-md font-medium transition-colors ${
                                       status === 'rejected'
                                         ? 'bg-[#ff4d4f] text-white'
@@ -360,17 +372,6 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
                                     } disabled:opacity-40`}
                                   >
                                     🔄 需更新
-                                  </button>
-                                  <button
-                                    onClick={() => handleReview(img.id, 'skipped')}
-                                    disabled={saving || !getReviewItemId(img.id)}
-                                    className={`flex-1 py-1.5 text-xs rounded-md font-medium transition-colors ${
-                                      status === 'skipped'
-                                        ? 'bg-gray-400 text-white'
-                                        : 'bg-gray-50 text-gray-500 hover:bg-gray-100'
-                                    } disabled:opacity-40`}
-                                  >
-                                    ❌ 跳过
                                   </button>
                                 </div>
                               </div>
@@ -380,6 +381,10 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
                       </div>
                     );
                   })}
+
+                  {storeTotal === 0 && (
+                    <div className="text-center py-8 text-gray-400 text-sm">该门店暂无上传图片</div>
+                  )}
                 </div>
               )}
             </div>
