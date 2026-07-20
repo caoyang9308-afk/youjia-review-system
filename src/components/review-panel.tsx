@@ -309,7 +309,7 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
                         disabled={saving}
                         className="px-4 py-2 bg-[#52c41a] text-white text-sm rounded-lg hover:bg-[#73d13d] disabled:opacity-50 transition-colors"
                       >
-                        一键全选通过
+                        一键全选不更新
                       </button>
                     )}
                     {submission.remark && (
@@ -348,7 +348,7 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
                                       status === 'rejected' ? 'bg-[#ff4d4f]' :
                                       'bg-gray-400'
                                     }`}>
-                                      {status === 'approved' ? '已通过' : '需更新'}
+                                      {status === 'approved' ? '不更新' : '需更新'}
                                     </div>
                                   )}
                                 </div>
@@ -362,7 +362,7 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
                                         : 'bg-green-50 text-[#52c41a] hover:bg-green-100'
                                     } disabled:opacity-40`}
                                   >
-                                    ✅ 通过
+                                    ✅ 不更新
                                   </button>
                                   <button
                                     onClick={() => handleReview(img.id, 'rejected')}
