@@ -234,32 +234,61 @@ export function InstallationPanel({ onDataChange }: { onDataChange: () => void }
             <div key={task.id} className="bg-white rounded-xl border border-gray-100 overflow-hidden">
               <div className="px-5 py-4">
                 <div className="flex flex-col sm:flex-row gap-4">
-                  {/* Design Preview */}
-                  <div className="shrink-0 flex gap-2">
-                    {/* Original */}
-                    <div
-                      className="w-20 h-20 rounded-lg overflow-hidden bg-gray-50 cursor-pointer"
-                      onClick={() => image?.image_url && setPreviewImage(image.image_url)}
-                    >
-                      {image?.image_url ? (
-                        <img src={image.image_url} alt="原图" className="w-full h-full object-cover" />
+                  {/* Images: 原图 vs 更新后 */}
+                  <div className="flex gap-3 shrink-0">
+                    {/* 原图 */}
+                    <div className="flex flex-col items-center gap-1">
+                      <span className="text-[10px] text-gray-400 font-medium">原图</span>
+                      {image ? (
+                        <div
+                          className="w-20 h-20 rounded-lg overflow-hidden bg-gray-50 cursor-pointer border border-gray-200"
+                          onClick={() => setPreviewImage(image.image_url)}
+                        >
+                          <img src={image.image_url} alt="原图" className="w-full h-full object-cover" />
+                        </div>
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-gray-300">
-                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                        <div className="w-20 h-20 rounded-lg bg-gray-100 flex items-center justify-center">
+                          <svg className="w-6 h-6 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                           </svg>
                         </div>
                       )}
                     </div>
-                    {/* Design */}
+                    {/* 设计稿 */}
                     {task.design_tasks?.design_url && (
-                      <div
-                        className="w-20 h-20 rounded-lg overflow-hidden bg-gray-50 cursor-pointer border-2 border-[#1677ff]"
-                        onClick={() => setPreviewImage(task.design_tasks!.design_url!)}
-                      >
-                        <img src={task.design_tasks.design_url} alt="设计稿" className="w-full h-full object-cover" />
+                      <div className="flex flex-col items-center gap-1">
+                        <span className="text-[10px] text-[#1677ff] font-medium">设计稿</span>
+                        <div
+                          className="w-20 h-20 rounded-lg overflow-hidden bg-gray-50 cursor-pointer border-2 border-[#1677ff]"
+                          onClick={() => setPreviewImage(task.design_tasks!.design_url!)}
+                        >
+                          <img src={task.design_tasks.design_url} alt="设计稿" className="w-full h-full object-cover" />
+                        </div>
                       </div>
                     )}
+                    {/* 更新后返图 */}
+                    <div className="flex flex-col items-center gap-1">
+                      <span className="text-[10px] text-[#52c41a] font-medium">更新后</span>
+                      {task.return_photo_url ? (
+                        <div
+                          className="w-20 h-20 rounded-lg overflow-hidden bg-gray-50 cursor-pointer border-2 border-[#52c41a]"
+                          onClick={() => setPreviewImage(task.return_photo_url!)}
+                        >
+                          <img src={task.return_photo_url} alt="更新后" className="w-full h-full object-cover" />
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => handleUploadReturnPhoto(task.id)}
+                          disabled={saving}
+                          className="w-20 h-20 rounded-lg border-2 border-dashed border-gray-200 flex flex-col items-center justify-center gap-0.5 hover:border-[#52c41a] hover:bg-[#f6ffed] transition-colors"
+                        >
+                          <svg className="w-5 h-5 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v16m8-8H4" />
+                          </svg>
+                          <span className="text-[9px] text-gray-400">上传返图</span>
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   {/* Info */}
@@ -307,25 +336,6 @@ export function InstallationPanel({ onDataChange }: { onDataChange: () => void }
                           编辑详情
                         </button>
                       ) : null}
-
-                      {!task.return_photo_url && (
-                        <button
-                          onClick={() => handleUploadReturnPhoto(task.id)}
-                          disabled={saving}
-                          className="px-3 py-1.5 text-sm text-gray-600 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-                        >
-                          上传返图
-                        </button>
-                      )}
-
-                      {task.return_photo_url && (
-                        <div
-                          className="w-10 h-10 rounded-lg overflow-hidden cursor-pointer border border-gray-200"
-                          onClick={() => setPreviewImage(task.return_photo_url!)}
-                        >
-                          <img src={task.return_photo_url} alt="返图" className="w-full h-full object-cover" />
-                        </div>
-                      )}
                     </div>
 
                     {/* Return Note */}
