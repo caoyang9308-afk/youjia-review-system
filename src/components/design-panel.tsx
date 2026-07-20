@@ -6,16 +6,21 @@ import { toChineseCategory } from '@/lib/constants';
 
 interface DesignTask {
   id: string;
+  review_item_id: string;
   design_status: string;
   design_url: string | null;
   designer_note: string | null;
+  created_at: string | null;
+  updated_at: string | null;
   review_items: {
     id: string;
     category: string;
     review_status: string;
+    priority?: string;
     submissions: { id: string; area: string; store_name: string };
     images: { id: string; image_url: string };
   };
+  _priority?: string;
 }
 
 const STATUS_OPTIONS = [
@@ -38,6 +43,7 @@ export function DesignPanel({ onDataChange }: { onDataChange: () => void }) {
   const [tasks, setTasks] = useState<DesignTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('all');
+  const [priorityFilter, setPriorityFilter] = useState('all');
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [editingNote, setEditingNote] = useState<string | null>(null);
   const [noteText, setNoteText] = useState('');
@@ -46,7 +52,10 @@ export function DesignPanel({ onDataChange }: { onDataChange: () => void }) {
   const fetchTasks = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/design${statusFilter !== 'all' ? `?status=${statusFilter}` : ''}`);
+      const params = new URLSearchParams();
+      if (statusFilter !== 'all') params.set('status', statusFilter);
+      if (priorityFilter !== 'all') params.set('priority', priorityFilter);
+      const res = await fetch(`/api/design${params.toString() ? `?${params}` : ''}`);
       const json = await res.json();
       if (json.success) setTasks(json.data);
     } catch {
@@ -54,7 +63,7 @@ export function DesignPanel({ onDataChange }: { onDataChange: () => void }) {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter]);
+  }, [statusFilter, priorityFilter]);
 
   useEffect(() => {
     fetchTasks();
@@ -141,6 +150,24 @@ export function DesignPanel({ onDataChange }: { onDataChange: () => void }) {
     input.click();
   };
 
+  const handleMarkUrgent = async (reviewItemId: string) => {
+    setSaving(true);
+    try {
+      const res = await fetch('/api/review', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'update_priority', review_item_id: reviewItemId, priority: 'urgent' }),
+      });
+      if (!res.ok) throw new Error('Failed');
+      await fetchTasks();
+    } catch (error) {
+      console.error('Mark urgent error:', error);
+      alert('标记失败，请重试');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   // Group by category (translate English keys to Chinese)
   const groupedTasks: Record<string, DesignTask[]> = {};
   tasks.forEach(task => {
@@ -177,9 +204,10 @@ export function DesignPanel({ onDataChange }: { onDataChange: () => void }) {
 
   return (
     <div className="space-y-4">
-      {/* Status Filter */}
-      <div className="bg-white rounded-xl p-4 border border-gray-100">
+      {/* Filters */}
+      <div className="bg-white rounded-xl p-4 border border-gray-100 space-y-2">
         <div className="flex flex-wrap gap-2">
+          <span className="text-xs text-gray-400 self-center mr-1">状态:</span>
           {STATUS_FILTER.map(status => (
             <button
               key={status}
@@ -193,7 +221,32 @@ export function DesignPanel({ onDataChange }: { onDataChange: () => void }) {
               {STATUS_LABELS[status]}
               {status !== 'all' && (
                 <span className="ml-1 text-xs opacity-75">
-                  ({tasks.filter(t => status === 'all' || t.design_status === status).length})
+                  ({tasks.filter(t => t.design_status === status).length})
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <span className="text-xs text-gray-400 self-center mr-1">优先级:</span>
+          {[
+            { value: 'all', label: '全部' },
+            { value: 'urgent', label: '🔄 立即更换' },
+            { value: 'scheduled', label: '📅 择期更换' },
+          ].map(p => (
+            <button
+              key={p.value}
+              onClick={() => setPriorityFilter(p.value)}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                priorityFilter === p.value
+                  ? 'bg-[#1677ff] text-white'
+                  : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              {p.label}
+              {p.value !== 'all' && (
+                <span className="ml-1 text-xs opacity-75">
+                  ({tasks.filter(t => t._priority === p.value).length})
                 </span>
               )}
             </button>
@@ -243,14 +296,35 @@ export function DesignPanel({ onDataChange }: { onDataChange: () => void }) {
                           <div className="font-medium text-gray-900">{submission?.store_name ?? '未知门店'}</div>
                           <div className="text-xs text-gray-500">{submission?.area} · {category}</div>
                         </div>
-                        <span
-                          className="shrink-0 px-2.5 py-0.5 rounded-full text-xs font-medium"
-                          style={{ backgroundColor: statusInfo.bg, color: statusInfo.color }}
-                        >
-                          {statusInfo.label}
-                        </span>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {task._priority === 'scheduled' && (
+                            <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[#fffbe6] text-[#faad14]">
+                              📅 择期更换
+                            </span>
+                          )}
+                          <span
+                            className="px-2.5 py-0.5 rounded-full text-xs font-medium"
+                            style={{ backgroundColor: statusInfo.bg, color: statusInfo.color }}
+                          >
+                            {statusInfo.label}
+                          </span>
+                        </div>
                       </div>
 
+                      {/* Actions */}
+                      {task._priority === 'scheduled' ? (
+                        <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-100">
+                          <span className="text-xs text-gray-400">📅 择期更换 — 暂不设计，仅标记</span>
+                          <button
+                            onClick={() => handleMarkUrgent(task.review_item_id)}
+                            disabled={saving}
+                            className="ml-auto px-3 py-1.5 bg-[#ff4d4f] text-white text-xs rounded-lg hover:bg-[#ff7875] disabled:opacity-50 transition-colors"
+                          >
+                            标记为立即更换
+                          </button>
+                        </div>
+                      ) : (
+                      <>
                       {/* Design Preview */}
                       <div className="flex items-center gap-3 mb-2">
                         {task.design_url ? (
@@ -322,6 +396,8 @@ export function DesignPanel({ onDataChange }: { onDataChange: () => void }) {
                           </button>
                         )}
                       </div>
+                      </>
+                      )}
                     </div>
                   </div>
                 </div>

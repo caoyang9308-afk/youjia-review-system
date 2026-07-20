@@ -25,6 +25,7 @@ interface ReviewItem {
   image_id: string;
   category: string;
   review_status: string;
+  priority: string;
   review_note: string | null;
 }
 
@@ -78,7 +79,11 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
     return reviewItems.find(r => r.image_id === imageId)?.id;
   };
 
-  const handleReview = async (imageId: string, status: 'approved' | 'rejected') => {
+  const getReviewPriority = (imageId: string): string => {
+    return reviewItems.find(r => r.image_id === imageId)?.priority ?? 'urgent';
+  };
+
+  const handleReview = async (imageId: string, status: 'approved' | 'rejected', priority: string = 'urgent') => {
     const reviewItemId = getReviewItemId(imageId);
     if (!reviewItemId) return;
 
@@ -89,13 +94,13 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'update',
-          items: [{ id: reviewItemId, review_status: status }],
+          items: [{ id: reviewItemId, review_status: status, priority }],
         }),
       });
       const json = await res.json();
       if (json.success) {
         setReviewItems(prev =>
-          prev.map(r => r.image_id === imageId ? { ...r, review_status: status } : r)
+          prev.map(r => r.image_id === imageId ? { ...r, review_status: status, priority } : r)
         );
         onDataChange();
       }
@@ -167,8 +172,11 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
   const reviewedCount = reviewItems.filter(r =>
     submissions.some(s => s.id === r.submission_id) && r.review_status !== 'pending'
   ).length;
-  const needUpdateCount = reviewItems.filter(r =>
-    submissions.some(s => s.id === r.submission_id) && r.review_status === 'rejected'
+  const urgentCount = reviewItems.filter(r =>
+    submissions.some(s => s.id === r.submission_id) && r.review_status === 'rejected' && r.priority === 'urgent'
+  ).length;
+  const scheduledCount = reviewItems.filter(r =>
+    submissions.some(s => s.id === r.submission_id) && r.review_status === 'rejected' && r.priority === 'scheduled'
   ).length;
   const pendingCount = reviewItems.filter(r =>
     submissions.some(s => s.id === r.submission_id) && r.review_status === 'pending'
@@ -235,8 +243,12 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
           <span className="text-lg font-bold text-[#faad14]">{pendingCount}</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-500">需要更新</span>
-          <span className="text-lg font-bold text-[#ff4d4f]">{needUpdateCount}</span>
+          <span className="text-sm text-gray-500">立即更换</span>
+          <span className="text-lg font-bold text-[#1677ff]">{urgentCount}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-gray-500">择期更换</span>
+          <span className="text-lg font-bold text-[#faad14]">{scheduledCount}</span>
         </div>
       </div>
 
@@ -330,6 +342,7 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                           {categoryImages.map(img => {
                             const status = getReviewStatus(img.id);
+                            const priority = getReviewPriority(img.id);
                             const hasItem = getReviewItemId(img.id) !== undefined;
                             return (
                               <div key={img.id} className="border border-gray-100 rounded-lg overflow-hidden">
@@ -345,14 +358,14 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
                                   {status !== 'uninitialized' && status !== 'pending' && (
                                     <div className={`absolute top-2 right-2 px-2 py-0.5 rounded text-xs font-medium text-white ${
                                       status === 'approved' ? 'bg-[#52c41a]' :
-                                      status === 'rejected' ? 'bg-[#ff4d4f]' :
-                                      'bg-gray-400'
+                                      priority === 'scheduled' ? 'bg-[#faad14]' :
+                                      'bg-[#1677ff]'
                                     }`}>
-                                      {status === 'approved' ? '✓ 不更新' : '🔄 需更新'}
+                                      {status === 'approved' ? '✓ 维持现状' : priority === 'scheduled' ? '📅 择期更换' : '🔄 立即更换'}
                                     </div>
                                   )}
                                 </div>
-                                <div className="p-2 flex gap-1.5">
+                                <div className="p-2 flex gap-1">
                                   <button
                                     onClick={() => handleReview(img.id, 'approved')}
                                     disabled={saving || !hasItem}
@@ -362,18 +375,29 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
                                         : 'bg-green-50 text-[#52c41a] hover:bg-green-100'
                                     } disabled:opacity-40`}
                                   >
-                                    ✓ 不更新
+                                    ✓ 维持现状
                                   </button>
                                   <button
-                                    onClick={() => handleReview(img.id, 'rejected')}
+                                    onClick={() => handleReview(img.id, 'rejected', 'urgent')}
                                     disabled={saving || !hasItem}
                                     className={`flex-1 py-1.5 text-xs rounded-md font-medium transition-colors ${
-                                      status === 'rejected'
-                                        ? 'bg-[#ff4d4f] text-white'
-                                        : 'bg-red-50 text-[#ff4d4f] hover:bg-red-100'
+                                      status === 'rejected' && priority === 'urgent'
+                                        ? 'bg-[#1677ff] text-white'
+                                        : 'bg-[#e6f4ff] text-[#1677ff] hover:bg-[#bae0ff]'
                                     } disabled:opacity-40`}
                                   >
-                                    🔄 需更新
+                                    🔄 立即更换
+                                  </button>
+                                  <button
+                                    onClick={() => handleReview(img.id, 'rejected', 'scheduled')}
+                                    disabled={saving || !hasItem}
+                                    className={`flex-1 py-1.5 text-xs rounded-md font-medium transition-colors ${
+                                      status === 'rejected' && priority === 'scheduled'
+                                        ? 'bg-[#faad14] text-white'
+                                        : 'bg-[#fffbe6] text-[#faad14] hover:bg-[#fff1b8]'
+                                    } disabled:opacity-40`}
+                                  >
+                                    📅 择期更换
                                   </button>
                                 </div>
                               </div>

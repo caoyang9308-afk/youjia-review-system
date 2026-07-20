@@ -46,6 +46,7 @@ export async function POST(request: NextRequest) {
         image_id?: string;
         category?: string;
         review_status?: string;
+        priority?: string;
         review_note?: string;
       }>;
     };
@@ -96,6 +97,7 @@ export async function POST(request: NextRequest) {
           .from('review_items')
           .update({
             review_status: item.review_status!,
+            priority: item.priority ?? 'urgent',
             review_note: item.review_note ?? null,
             reviewed_at: new Date().toISOString(),
           })
@@ -103,17 +105,19 @@ export async function POST(request: NextRequest) {
         if (updateErr) throw new Error(`更新审核项失败: ${updateErr.message}`);
       }
 
-      // Auto-create design tasks for rejected items (需要更新)
-      const rejectedIds = updates.filter(u => u.review_status === 'rejected').map(u => u.id!);
-      if (rejectedIds.length > 0) {
+      // Auto-create design tasks ONLY for urgent rejected items (立即更换)
+      const urgentRejectedIds = updates
+        .filter(u => u.review_status === 'rejected' && (u.priority ?? 'urgent') === 'urgent')
+        .map(u => u.id!);
+      if (urgentRejectedIds.length > 0) {
         // Check which already have design tasks
         const { data: existingDesigns } = await client
           .from('design_tasks')
           .select('review_item_id')
-          .in('review_item_id', rejectedIds);
+          .in('review_item_id', urgentRejectedIds);
 
         const existingDesignIds = new Set(existingDesigns?.map(d => d.review_item_id) ?? []);
-        const newDesignItems = rejectedIds
+        const newDesignItems = urgentRejectedIds
           .filter(id => !existingDesignIds.has(id))
           .map(id => ({
             review_item_id: id,
@@ -131,10 +135,12 @@ export async function POST(request: NextRequest) {
 
     if (action === 'update' && items[0]?.id) {
       const item = items[0];
+      const priority = item.priority ?? 'urgent';
       const { data, error: updateErr } = await client
         .from('review_items')
         .update({
           review_status: item.review_status!,
+          priority,
           review_note: item.review_note ?? null,
           reviewed_at: new Date().toISOString(),
         })
@@ -143,8 +149,8 @@ export async function POST(request: NextRequest) {
         .maybeSingle();
       if (updateErr) throw new Error(`更新审核项失败: ${updateErr.message}`);
 
-      // If rejected, auto-create design task
-      if (item.review_status === 'rejected' && data) {
+      // If rejected with urgent priority, auto-create design task
+      if (item.review_status === 'rejected' && priority === 'urgent' && data) {
         const { data: existingDesign } = await client
           .from('design_tasks')
           .select('id')
@@ -156,6 +162,38 @@ export async function POST(request: NextRequest) {
             .from('design_tasks')
             .insert({ review_item_id: item.id, design_status: 'pending' });
           if (designErr) throw new Error(`创建设计任务失败: ${designErr.message}`);
+        }
+      }
+
+      return NextResponse.json({ success: true, data });
+    }
+
+    // Update priority action (change from scheduled to urgent)
+    if (body.action === 'update_priority') {
+      const { review_item_id, priority } = body;
+      if (!review_item_id || !priority) {
+        return NextResponse.json({ success: false, error: '缺少参数' }, { status: 400 });
+      }
+
+      // Update the priority
+      const { data, error: updateErr } = await client
+        .from('review_items')
+        .update({ priority })
+        .eq('id', review_item_id)
+        .select()
+        .maybeSingle();
+      if (updateErr) throw new Error(`更新优先级失败: ${updateErr.message}`);
+
+      // If changing to urgent, auto-create design task if not exists
+      if (priority === 'urgent' && data?.review_status === 'rejected') {
+        const { data: existingDesign } = await client
+          .from('design_tasks')
+          .select('id')
+          .eq('review_item_id', review_item_id)
+          .maybeSingle();
+
+        if (!existingDesign) {
+          await client.from('design_tasks').insert({ review_item_id, design_status: 'pending' });
         }
       }
 

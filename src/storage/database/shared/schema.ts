@@ -48,6 +48,7 @@ export const reviewItems = pgTable(
     category: text("category").notNull(),
     review_status: text("review_status").notNull().default("pending"),
     review_note: text("review_note"),
+    priority: text("priority").notNull().default("urgent"),
     reviewed_at: timestamp("reviewed_at", { withTimezone: true }),
   },
   (table) => [
