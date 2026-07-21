@@ -48,19 +48,6 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
   const [previewImage, setPreviewImage] = useState<ImagePreviewData | null>(null);
   const [saving, setSaving] = useState(false);
 
-  // Build flat list of all images for navigation
-  const allImages: ImagePreviewData[] = submissions.flatMap(s =>
-    s.images.map(img => ({
-      url: img.image_url,
-      id: img.id,
-      category: CATEGORY_MAP[img.category] || img.category,
-      storeName: s.store_name,
-      area: s.area,
-      reviewStatus: getReviewStatus(img.id),
-      priority: getReviewPriority(img.id),
-    }))
-  );
-
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
@@ -95,6 +82,19 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
   const getReviewPriority = (imageId: string): string => {
     return reviewItems.find(r => r.image_id === imageId)?.priority ?? 'urgent';
   };
+
+  // Build flat list of all images for navigation
+  const allImages: ImagePreviewData[] = submissions.flatMap(s =>
+    s.images.map(img => ({
+      url: img.image_url,
+      id: img.id,
+      category: CATEGORY_MAP[img.category] || img.category,
+      storeName: s.store_name,
+      area: s.area,
+      reviewStatus: getReviewStatus(img.id),
+      priority: getReviewPriority(img.id),
+    }))
+  );
 
   const handleReview = async (imageId: string, status: 'approved' | 'rejected', priority: string = 'urgent') => {
     const reviewItemId = getReviewItemId(imageId);
