@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { ImagePreview } from './image-preview';
+import { ImagePreview, type ImagePreviewData } from './image-preview';
 import { toChineseCategory } from '@/lib/constants';
 
 interface DesignTask {
@@ -44,10 +44,22 @@ export function DesignPanel({ onDataChange }: { onDataChange: () => void }) {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
-  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [previewImage, setPreviewImage] = useState<ImagePreviewData | null>(null);
   const [editingNote, setEditingNote] = useState<string | null>(null);
   const [noteText, setNoteText] = useState('');
   const [saving, setSaving] = useState(false);
+
+  const allImages = tasks.map(t => ({
+    id: t.review_items?.images?.id || '',
+    url: t.review_items?.images?.image_url || '',
+    category: t.review_items?.category || '',
+    storeName: t.review_items?.submissions?.store_name || '',
+    area: t.review_items?.submissions?.area || '',
+  }));
+  const handleNavigateImage = (imageId: string) => {
+    const img = allImages.find(i => i.id === imageId);
+    if (img) setPreviewImage(img);
+  };
 
   const fetchTasks = useCallback(async () => {
     setLoading(true);
@@ -273,7 +285,7 @@ export function DesignPanel({ onDataChange }: { onDataChange: () => void }) {
                     <div className="shrink-0">
                       <div
                         className="w-24 h-24 rounded-lg overflow-hidden bg-gray-50 cursor-pointer"
-                        onClick={() => image?.image_url && setPreviewImage(image.image_url)}
+                        onClick={() => image?.image_url && setPreviewImage({ id: image.id, url: image.image_url, category: task.review_items?.category || '', storeName: submission?.store_name || '', area: submission?.area || '' })}
                       >
                         {image?.image_url ? (
                           <img src={image.image_url} alt="原图" className="w-full h-full object-cover" />
@@ -330,7 +342,7 @@ export function DesignPanel({ onDataChange }: { onDataChange: () => void }) {
                         {task.design_url ? (
                           <div
                             className="w-16 h-16 rounded-lg overflow-hidden bg-gray-50 cursor-pointer border-2 border-[#1677ff]"
-                            onClick={() => setPreviewImage(task.design_url!)}
+                            onClick={() => setPreviewImage({ id: task.id, url: task.design_url!, category: task.review_items?.category || '', storeName: submission?.store_name || '', area: submission?.area || '' })}
                           >
                             <img src={task.design_url} alt="设计稿" className="w-full h-full object-cover" />
                           </div>
@@ -409,7 +421,13 @@ export function DesignPanel({ onDataChange }: { onDataChange: () => void }) {
 
       {/* Image Preview */}
       {previewImage && (
-        <ImagePreview url={previewImage} onClose={() => setPreviewImage(null)} />
+        <ImagePreview
+          data={previewImage}
+          allImages={allImages}
+          onClose={() => setPreviewImage(null)}
+          onNavigate={handleNavigateImage}
+          onReview={async () => {}}
+        />
       )}
     </div>
   );

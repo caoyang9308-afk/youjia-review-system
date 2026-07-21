@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { ImagePreview } from './image-preview';
+import { ImagePreview, type ImagePreviewData } from './image-preview';
 import { toChineseCategory } from '@/lib/constants';
 
 interface InstallationTask {
@@ -20,7 +20,7 @@ interface InstallationTask {
       id: string;
       category: string;
       submissions: { id: string; area: string; store_name: string };
-      images: { id: string; image_url: string };
+      images: { id: string; category?: string; image_url: string };
     };
   };
 }
@@ -47,7 +47,7 @@ export function InstallationPanel({ onDataChange }: { onDataChange: () => void }
   const [tasks, setTasks] = useState<InstallationTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('all');
-  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [previewImage, setPreviewImage] = useState<ImagePreviewData | null>(null);
   const [editingTask, setEditingTask] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({
     company_name: '',
@@ -57,6 +57,29 @@ export function InstallationPanel({ onDataChange }: { onDataChange: () => void }
     return_note: '',
   });
   const [saving, setSaving] = useState(false);
+
+  const allImages: ImagePreviewData[] = tasks.flatMap(t => {
+    const ri = t.design_tasks?.review_items;
+    if (!ri) return [];
+    const imgs: ImagePreviewData[] = [];
+    if (ri.images?.image_url) {
+      imgs.push({ id: ri.images.id, url: ri.images.image_url, category: ri.category || '', storeName: ri.submissions?.store_name || '', area: ri.submissions?.area || '' });
+    }
+    if (t.design_tasks?.design_url) {
+      imgs.push({ id: `design-${t.id}`, url: t.design_tasks.design_url, category: ri.category || '', storeName: ri.submissions?.store_name || '', area: ri.submissions?.area || '' });
+    }
+    if (t.return_photo_url) {
+      imgs.push({ id: `return-${t.id}`, url: t.return_photo_url, category: ri.category || '', storeName: ri.submissions?.store_name || '', area: ri.submissions?.area || '' });
+    }
+    return imgs;
+  });
+
+  const handleNavigateImage = useCallback((dir: 'prev' | 'next', currentId: string) => {
+    const idx = allImages.findIndex(img => img.id === currentId);
+    if (idx === -1) return;
+    const newIdx = dir === 'next' ? (idx + 1) % allImages.length : (idx - 1 + allImages.length) % allImages.length;
+    setPreviewImage(allImages[newIdx]);
+  }, [allImages]);
 
   const fetchTasks = useCallback(async () => {
     setLoading(true);
@@ -226,7 +249,7 @@ export function InstallationPanel({ onDataChange }: { onDataChange: () => void }
         {tasks.map(task => {
           const reviewItem = task.design_tasks?.review_items;
           const submission = reviewItem?.submissions;
-          const image = reviewItem?.images;
+          const image = reviewItem?.images as { id: string; category?: string; image_url: string } | undefined;
           const statusInfo = STATUS_OPTIONS.find(s => s.value === task.install_status) ?? STATUS_OPTIONS[0];
           const isEditing = editingTask === task.id;
 
@@ -242,7 +265,7 @@ export function InstallationPanel({ onDataChange }: { onDataChange: () => void }
                       {image ? (
                         <div
                           className="w-20 h-20 rounded-lg overflow-hidden bg-gray-50 cursor-pointer border border-gray-200"
-                          onClick={() => setPreviewImage(image.image_url)}
+                          onClick={() => setPreviewImage({ id: image.id, url: image.image_url, category: image.category || '', storeName: submission?.store_name || '', area: submission?.area || '' })}
                         >
                           <img src={image.image_url} alt="原图" className="w-full h-full object-cover" />
                         </div>
@@ -260,7 +283,7 @@ export function InstallationPanel({ onDataChange }: { onDataChange: () => void }
                         <span className="text-[10px] text-[#1677ff] font-medium">设计稿</span>
                         <div
                           className="w-20 h-20 rounded-lg overflow-hidden bg-gray-50 cursor-pointer border-2 border-[#1677ff]"
-                          onClick={() => setPreviewImage(task.design_tasks!.design_url!)}
+                          onClick={() => setPreviewImage({ id: task.id, url: task.design_tasks!.design_url!, category: reviewItem?.category || '', storeName: submission?.store_name || '', area: submission?.area || '' })}
                         >
                           <img src={task.design_tasks.design_url} alt="设计稿" className="w-full h-full object-cover" />
                         </div>
@@ -272,7 +295,7 @@ export function InstallationPanel({ onDataChange }: { onDataChange: () => void }
                       {task.return_photo_url ? (
                         <div
                           className="w-20 h-20 rounded-lg overflow-hidden bg-gray-50 cursor-pointer border-2 border-[#52c41a]"
-                          onClick={() => setPreviewImage(task.return_photo_url!)}
+                          onClick={() => setPreviewImage({ id: task.id, url: task.return_photo_url!, category: reviewItem?.category || '', storeName: submission?.store_name || '', area: submission?.area || '' })}
                         >
                           <img src={task.return_photo_url} alt="更新后" className="w-full h-full object-cover" />
                         </div>
@@ -450,7 +473,13 @@ export function InstallationPanel({ onDataChange }: { onDataChange: () => void }
 
       {/* Image Preview */}
       {previewImage && (
-        <ImagePreview url={previewImage} onClose={() => setPreviewImage(null)} />
+        <ImagePreview
+          data={previewImage}
+          allImages={allImages}
+          onClose={() => setPreviewImage(null)}
+          onNavigate={(id) => setPreviewImage(allImages.find(i => i.id === id) || null)}
+          onReview={async () => {}}
+        />
       )}
     </div>
   );

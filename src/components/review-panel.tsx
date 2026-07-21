@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { ImagePreview } from './image-preview';
-import { CATEGORIES_ZH, CATEGORY_REVERSE_MAP, AREAS } from '@/lib/constants';
+import { ImagePreview, type ImagePreviewData } from './image-preview';
+import { CATEGORIES_ZH, CATEGORY_REVERSE_MAP, CATEGORY_MAP, AREAS } from '@/lib/constants';
 
 interface Image {
   id: string;
@@ -45,8 +45,21 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
   const [activeArea, setActiveArea] = useState('全部');
   const [expandedStore, setExpandedStore] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [previewImage, setPreviewImage] = useState<ImagePreviewData | null>(null);
   const [saving, setSaving] = useState(false);
+
+  // Build flat list of all images for navigation
+  const allImages: ImagePreviewData[] = submissions.flatMap(s =>
+    s.images.map(img => ({
+      url: img.image_url,
+      id: img.id,
+      category: CATEGORY_MAP[img.category] || img.category,
+      storeName: s.store_name,
+      area: s.area,
+      reviewStatus: getReviewStatus(img.id),
+      priority: getReviewPriority(img.id),
+    }))
+  );
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -100,7 +113,32 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
       const json = await res.json();
       if (json.success) {
         setReviewItems(prev =>
-          prev.map(r => r.image_id === imageId ? { ...r, review_status: status, priority } : r)
+          prev.map(r => r.image_id === imageId ? { ...r, review_status: status, priority: priority || 'urgent' } : r)
+        );
+        onDataChange();
+      }
+    } catch {
+      // silently handle
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handlePreviewReview = async (imageId: string, status: string, priority?: string) => {
+    setSaving(true);
+    try {
+      const res = await fetch('/api/review', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'update',
+          items: [{ image_id: imageId, review_status: status, priority }],
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setReviewItems(prev =>
+          prev.map(r => r.image_id === imageId ? { ...r, review_status: status, priority } as ReviewItem : r)
         );
         onDataChange();
       }
@@ -348,7 +386,7 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
                               <div key={img.id} className="border border-gray-100 rounded-lg overflow-hidden">
                                 <div
                                   className="relative aspect-[4/3] bg-gray-50 cursor-pointer overflow-hidden"
-                                  onClick={() => setPreviewImage(img.image_url)}
+                                  onClick={() => setPreviewImage({ url: img.image_url, id: img.id, category: img.category, storeName: submission.store_name, area: submission.area })}
                                 >
                                   <img
                                     src={img.image_url}
@@ -420,7 +458,13 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
 
       {/* Image Preview */}
       {previewImage && (
-        <ImagePreview url={previewImage} onClose={() => setPreviewImage(null)} />
+        <ImagePreview
+          data={previewImage}
+          allImages={allImages}
+          onClose={() => setPreviewImage(null)}
+          onNavigate={(id) => setPreviewImage(allImages.find(i => i.id === id) || null)}
+          onReview={handlePreviewReview}
+        />
       )}
     </div>
   );

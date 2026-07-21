@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
             id,
             category,
             submissions!inner(id, area, store_name),
-            images!inner(id, image_url)
+            images!inner(id, category, image_url)
           )
         )
       `)
