@@ -53,8 +53,10 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
     setLoading(true);
     try {
       const [subRes, revRes] = await Promise.all([
-        fetch(`/api/submissions${activeArea !== '全部' ? `?area=${encodeURIComponent(activeArea)}` : ''}`),
-        fetch('/api/review'),
+        fetch(`/api/submissions${activeArea !== '全部' ? `?area=${encodeURIComponent(activeArea)}` : ''}`, {
+          cache: 'force-cache',
+        }),
+        fetch('/api/review', { cache: 'force-cache' }),
       ]);
       const subJson = await subRes.json();
       const revJson = await revRes.json();
@@ -451,6 +453,7 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
                                   <img
                                     src={img.image_url}
                                     alt={`${category} - ${submission.store_name}`}
+                                    loading="lazy"
                                     className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
                                   />
                                   {status !== 'uninitialized' && status !== 'pending' && (
