@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { ImagePreview, type ImagePreviewData } from './image-preview';
-import { CATEGORIES_ZH, CATEGORY_REVERSE_MAP, CATEGORY_MAP, AREAS } from '@/lib/constants';
+import { CATEGORIES_ZH, CATEGORY_REVERSE_MAP, CATEGORY_MAP, AREAS, smartSearchMatch } from '@/lib/constants';
 
 interface Image {
   id: string;
@@ -343,7 +343,7 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
               s.store_name?.toLowerCase().includes(q) ||
               s.area?.toLowerCase().includes(q) ||
               s.remark?.toLowerCase().includes(q) ||
-              s.images.some(img => categoryDisplay(img.category).toLowerCase().includes(q))
+              s.images.some(img => smartSearchMatch(searchQuery, categoryDisplay(img.category)))
             );
           })
           .map(submission => {

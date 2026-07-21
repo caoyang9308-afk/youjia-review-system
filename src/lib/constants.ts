@@ -41,6 +41,44 @@ export function toEnglishCategory(zh: string): string {
 // Area list
 export const AREAS = ['全部', '苏州一区', '苏州二区', '苏州三区', '苏州四区', '苏州五区', '南京区域', '无锡区域', '浙江区域'];
 
+// Smart search keywords mapping (用户搜索词 -> 匹配的分类关键词)
+export const SEARCH_KEYWORD_MAP: Record<string, string[]> = {
+  '玻璃贴': ['灯箱', '软膜'],
+  '玻璃': ['灯箱', '软膜'],
+  '贴': ['灯箱', '软膜', '门招'],
+  '灯箱': ['灯箱'],
+  '软膜': ['软膜灯箱'],
+  '门招': ['店招门头', '门头'],
+  '门头': ['店招门头', '门头'],
+  '招牌': ['店招门头'],
+  '发光字': ['发光字'],
+  '字': ['发光字'],
+  '荣誉墙': ['荣誉墙'],
+  '荣誉': ['荣誉墙'],
+  '物料': ['门店物料'],
+  '商场': ['商场', '灯箱广告'],
+  '户外': ['户外广告'],
+  '广告': ['广告', '灯箱'],
+};
+
+// 智能搜索：将用户输入映射到相关分类
+export function smartSearchMatch(query: string, categoryZh: string): boolean {
+  const q = query.toLowerCase();
+  const cat = categoryZh.toLowerCase();
+  
+  // 直接匹配
+  if (cat.includes(q)) return true;
+  
+  // 通过关键词映射匹配
+  for (const [keyword, targets] of Object.entries(SEARCH_KEYWORD_MAP)) {
+    if (q.includes(keyword.toLowerCase())) {
+      return targets.some(t => cat.includes(t.toLowerCase()));
+    }
+  }
+  
+  return false;
+}
+
 // Review actions
 export const REVIEW_ACTIONS = {
   keep: { label: '维持现状', icon: '✓', color: 'text-gray-600 bg-gray-50 hover:bg-gray-100' },
