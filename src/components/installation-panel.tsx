@@ -63,13 +63,13 @@ export function InstallationPanel({ onDataChange }: { onDataChange: () => void }
     if (!ri) return [];
     const imgs: ImagePreviewData[] = [];
     if (ri.images?.image_url) {
-      imgs.push({ id: ri.images.id, url: ri.images.image_url, category: ri.category || '', storeName: ri.submissions?.store_name || '', area: ri.submissions?.area || '' });
+      imgs.push({ id: ri.images.id, submissionId: ri.submissions?.id || '', url: ri.images.image_url, category: ri.category || '', storeName: ri.submissions?.store_name || '', area: ri.submissions?.area || '' });
     }
     if (t.design_tasks?.design_url) {
-      imgs.push({ id: `design-${t.id}`, url: t.design_tasks.design_url, category: ri.category || '', storeName: ri.submissions?.store_name || '', area: ri.submissions?.area || '' });
+      imgs.push({ id: `design-${t.id}`, submissionId: ri.submissions?.id || '', url: t.design_tasks.design_url, category: ri.category || '', storeName: ri.submissions?.store_name || '', area: ri.submissions?.area || '' });
     }
     if (t.return_photo_url) {
-      imgs.push({ id: `return-${t.id}`, url: t.return_photo_url, category: ri.category || '', storeName: ri.submissions?.store_name || '', area: ri.submissions?.area || '' });
+      imgs.push({ id: `return-${t.id}`, submissionId: ri.submissions?.id || '', url: t.return_photo_url, category: ri.category || '', storeName: ri.submissions?.store_name || '', area: ri.submissions?.area || '' });
     }
     return imgs;
   });
@@ -265,7 +265,7 @@ export function InstallationPanel({ onDataChange }: { onDataChange: () => void }
                       {image ? (
                         <div
                           className="w-20 h-20 rounded-lg overflow-hidden bg-gray-50 cursor-pointer border border-gray-200"
-                          onClick={() => setPreviewImage({ id: image.id, url: image.image_url, category: image.category || '', storeName: submission?.store_name || '', area: submission?.area || '' })}
+                          onClick={() => setPreviewImage({ id: image.id, submissionId: submission?.id || '', url: image.image_url, category: image.category || '', storeName: submission?.store_name || '', area: submission?.area || '' })}
                         >
                           <img src={image.image_url} alt="原图" className="w-full h-full object-cover" />
                         </div>
@@ -283,7 +283,7 @@ export function InstallationPanel({ onDataChange }: { onDataChange: () => void }
                         <span className="text-[10px] text-[#1677ff] font-medium">设计稿</span>
                         <div
                           className="w-20 h-20 rounded-lg overflow-hidden bg-gray-50 cursor-pointer border-2 border-[#1677ff]"
-                          onClick={() => setPreviewImage({ id: task.id, url: task.design_tasks!.design_url!, category: reviewItem?.category || '', storeName: submission?.store_name || '', area: submission?.area || '' })}
+                          onClick={() => setPreviewImage({ id: task.id, submissionId: submission?.id || '', url: task.design_tasks!.design_url!, category: reviewItem?.category || '', storeName: submission?.store_name || '', area: submission?.area || '' })}
                         >
                           <img src={task.design_tasks.design_url} alt="设计稿" className="w-full h-full object-cover" />
                         </div>
@@ -295,7 +295,7 @@ export function InstallationPanel({ onDataChange }: { onDataChange: () => void }
                       {task.return_photo_url ? (
                         <div
                           className="w-20 h-20 rounded-lg overflow-hidden bg-gray-50 cursor-pointer border-2 border-[#52c41a]"
-                          onClick={() => setPreviewImage({ id: task.id, url: task.return_photo_url!, category: reviewItem?.category || '', storeName: submission?.store_name || '', area: submission?.area || '' })}
+                          onClick={() => setPreviewImage({ id: task.id, submissionId: submission?.id || '', url: task.return_photo_url!, category: reviewItem?.category || '', storeName: submission?.store_name || '', area: submission?.area || '' })}
                         >
                           <img src={task.return_photo_url} alt="更新后" className="w-full h-full object-cover" />
                         </div>

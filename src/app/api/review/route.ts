@@ -168,6 +168,106 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, data });
     }
 
+    // Update by image_id (used from image preview modal)
+    if (action === 'update' && items[0]?.image_id) {
+      const item = items[0];
+      const priority = item.priority ?? 'urgent';
+
+      // Look up existing review_item by image_id
+      const { data: existing } = await client
+        .from('review_items')
+        .select('id, submission_id')
+        .eq('image_id', item.image_id)
+        .maybeSingle();
+
+      let reviewItemId: string;
+
+      if (existing) {
+        // Update existing review item
+        reviewItemId = existing.id;
+        const { error: updateErr } = await client
+          .from('review_items')
+          .update({
+            review_status: item.review_status!,
+            priority,
+            review_note: item.review_note ?? null,
+            reviewed_at: new Date().toISOString(),
+          })
+          .eq('id', existing.id);
+        if (updateErr) throw new Error(`更新审核项失败: ${updateErr.message}`);
+      } else {
+        // Create new review item using submission_id from request
+        if (!item.submission_id) throw new Error('缺少 submission_id');
+        
+        // Ensure submission exists locally (for FK constraint)
+        const { data: existingSub } = await client
+          .from('submissions')
+          .select('id')
+          .eq('id', item.submission_id)
+          .maybeSingle();
+        if (!existingSub) {
+          // Insert a stub submission record
+          await client.from('submissions').insert({
+            id: item.submission_id,
+            area: '',
+            store_name: '',
+            status: 'submitted',
+          });
+        }
+
+        // Ensure image exists locally (for FK constraint)
+        const { data: existingImg } = await client
+          .from('images')
+          .select('id')
+          .eq('id', item.image_id)
+          .maybeSingle();
+        if (!existingImg) {
+          await client.from('images').insert({
+            id: item.image_id,
+            submission_id: item.submission_id,
+            category: item.category || '',
+            image_url: '',
+          });
+        }
+        
+        const category = item.category || '';
+        
+        const { data: newItem, error: insertErr } = await client
+          .from('review_items')
+          .insert({
+            submission_id: item.submission_id,
+            image_id: item.image_id,
+            category,
+            review_status: item.review_status!,
+            priority,
+            review_note: item.review_note ?? null,
+            reviewed_at: new Date().toISOString(),
+          })
+          .select()
+          .single();
+        if (insertErr || !newItem) throw new Error(`创建审核项失败: ${insertErr?.message ?? '未知错误'}`);
+        reviewItemId = newItem.id;
+      }
+
+      // If rejected with urgent priority, auto-create design task
+      if (item.review_status === 'rejected' && priority === 'urgent') {
+        const { data: existingDesign } = await client
+          .from('design_tasks')
+          .select('id')
+          .eq('review_item_id', reviewItemId)
+          .maybeSingle();
+
+        if (!existingDesign) {
+          const { error: designErr } = await client
+            .from('design_tasks')
+            .insert({ review_item_id: reviewItemId, design_status: 'pending' });
+          if (designErr) throw new Error(`创建设计任务失败: ${designErr.message}`);
+        }
+      }
+
+      return NextResponse.json({ success: true, data: { review_item_id: reviewItemId } });
+    }
+
     // Update priority action (change from scheduled to urgent)
     if (body.action === 'update_priority') {
       const { review_item_id, priority } = body;

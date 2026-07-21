@@ -51,6 +51,7 @@ export function DesignPanel({ onDataChange }: { onDataChange: () => void }) {
 
   const allImages = tasks.map(t => ({
     id: t.review_items?.images?.id || '',
+    submissionId: t.review_items?.submissions?.id || '',
     url: t.review_items?.images?.image_url || '',
     category: t.review_items?.category || '',
     storeName: t.review_items?.submissions?.store_name || '',
@@ -285,7 +286,7 @@ export function DesignPanel({ onDataChange }: { onDataChange: () => void }) {
                     <div className="shrink-0">
                       <div
                         className="w-24 h-24 rounded-lg overflow-hidden bg-gray-50 cursor-pointer"
-                        onClick={() => image?.image_url && setPreviewImage({ id: image.id, url: image.image_url, category: task.review_items?.category || '', storeName: submission?.store_name || '', area: submission?.area || '' })}
+                        onClick={() => image?.image_url && setPreviewImage({ id: image.id, submissionId: submission?.id || '', url: image.image_url, category: task.review_items?.category || '', storeName: submission?.store_name || '', area: submission?.area || '' })}
                       >
                         {image?.image_url ? (
                           <img src={image.image_url} alt="原图" className="w-full h-full object-cover" />
@@ -342,7 +343,7 @@ export function DesignPanel({ onDataChange }: { onDataChange: () => void }) {
                         {task.design_url ? (
                           <div
                             className="w-16 h-16 rounded-lg overflow-hidden bg-gray-50 cursor-pointer border-2 border-[#1677ff]"
-                            onClick={() => setPreviewImage({ id: task.id, url: task.design_url!, category: task.review_items?.category || '', storeName: submission?.store_name || '', area: submission?.area || '' })}
+                            onClick={() => setPreviewImage({ id: task.id, submissionId: submission?.id || '', url: task.design_url!, category: task.review_items?.category || '', storeName: submission?.store_name || '', area: submission?.area || '' })}
                           >
                             <img src={task.design_url} alt="设计稿" className="w-full h-full object-cover" />
                           </div>

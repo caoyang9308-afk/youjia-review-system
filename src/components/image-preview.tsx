@@ -5,6 +5,7 @@ import { useEffect, useCallback } from 'react';
 export interface ImagePreviewData {
   url: string;
   id: string;
+  submissionId: string;
   category: string;
   storeName: string;
   area: string;
@@ -17,7 +18,7 @@ interface ImagePreviewProps {
   allImages: ImagePreviewData[];
   onClose: () => void;
   onNavigate: (imageId: string) => void;
-  onReview?: (imageId: string, status: string, priority?: string) => void;
+  onReview?: (imageId: string, status: string, priority?: string, submissionId?: string, category?: string) => void;
 }
 
 export function ImagePreview({ data, allImages, onClose, onNavigate, onReview }: ImagePreviewProps) {
@@ -126,7 +127,7 @@ export function ImagePreview({ data, allImages, onClose, onNavigate, onReview }:
       <div className="px-4 py-3 bg-gray-900/80 border-t border-white/10" onClick={e => e.stopPropagation()}>
         <div className="flex gap-2 max-w-lg mx-auto">
           <button
-            onClick={() => onReview(data.id, 'approved')}
+            onClick={() => onReview(data.id, 'approved', undefined, data.submissionId, data.category)}
             className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors ${
               status === 'approved'
                 ? 'bg-[#52c41a] text-white'
@@ -136,7 +137,7 @@ export function ImagePreview({ data, allImages, onClose, onNavigate, onReview }:
             ✓ 维持现状
           </button>
           <button
-            onClick={() => onReview(data.id, 'rejected', 'urgent')}
+            onClick={() => onReview(data.id, 'rejected', 'urgent', data.submissionId, data.category)}
             className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors ${
               status === 'rejected' && priority === 'urgent'
                 ? 'bg-[#1677ff] text-white'
@@ -146,7 +147,7 @@ export function ImagePreview({ data, allImages, onClose, onNavigate, onReview }:
              立即更换
           </button>
           <button
-            onClick={() => onReview(data.id, 'rejected', 'scheduled')}
+            onClick={() => onReview(data.id, 'rejected', 'scheduled', data.submissionId, data.category)}
             className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors ${
               status === 'rejected' && priority === 'scheduled'
                 ? 'bg-[#faad14] text-white'

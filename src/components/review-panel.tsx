@@ -88,6 +88,7 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
     s.images.map(img => ({
       url: img.image_url,
       id: img.id,
+      submissionId: s.id,
       category: CATEGORY_MAP[img.category] || img.category,
       storeName: s.store_name,
       area: s.area,
@@ -124,7 +125,7 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
     }
   };
 
-  const handlePreviewReview = async (imageId: string, status: string, priority?: string) => {
+  const handlePreviewReview = async (imageId: string, status: string, priority?: string, submissionId?: string, category?: string) => {
     setSaving(true);
     try {
       const res = await fetch('/api/review', {
@@ -132,15 +133,23 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'update',
-          items: [{ image_id: imageId, review_status: status, priority }],
+          items: [{ image_id: imageId, review_status: status, priority, submission_id: submissionId, category }],
         }),
       });
       const json = await res.json();
       if (json.success) {
-        setReviewItems(prev =>
-          prev.map(r => r.image_id === imageId ? { ...r, review_status: status, priority } as ReviewItem : r)
-        );
+        // Update local state if review item exists, otherwise refresh
+        const existed = reviewItems.some(r => r.image_id === imageId);
+        if (existed) {
+          setReviewItems(prev =>
+            prev.map(r => r.image_id === imageId ? { ...r, review_status: status, priority } as ReviewItem : r)
+          );
+        } else {
+          await fetchData();
+        }
         onDataChange();
+        // Update the preview data to reflect new status
+        setPreviewImage(prev => prev ? { ...prev, reviewStatus: status, priority } : prev);
       }
     } catch {
       // silently handle
@@ -386,7 +395,7 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
                               <div key={img.id} className="border border-gray-100 rounded-lg overflow-hidden">
                                 <div
                                   className="relative aspect-[4/3] bg-gray-50 cursor-pointer overflow-hidden"
-                                  onClick={() => setPreviewImage({ url: img.image_url, id: img.id, category: img.category, storeName: submission.store_name, area: submission.area })}
+                                  onClick={() => setPreviewImage({ url: img.image_url, id: img.id, submissionId: submission.id, category: img.category, storeName: submission.store_name, area: submission.area })}
                                 >
                                   <img
                                     src={img.image_url}
