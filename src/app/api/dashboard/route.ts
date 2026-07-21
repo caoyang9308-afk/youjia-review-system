@@ -2,26 +2,46 @@ import { NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 import { toChineseCategory, CATEGORIES_EN } from '@/lib/constants';
 
+const REMOTE_API = 'https://5880716d-e978-4840-8f0f-1438eebd70f6.dev.coze.site/api/public/submissions';
+
+// 缓存远程数据，5秒内不重复请求
+let cachedRemoteData: any[] | null = null;
+let cachedRemoteAt = 0;
+const CACHE_TTL = 5000;
+
+async function fetchRemoteSubmissions(): Promise<any[]> {
+  const now = Date.now();
+  if (cachedRemoteData && now - cachedRemoteAt < CACHE_TTL) {
+    return cachedRemoteData;
+  }
+  try {
+    const resp = await fetch(REMOTE_API, {
+      signal: AbortSignal.timeout(30000),
+      next: { revalidate: 5 },
+    });
+    const json = await resp.json();
+    const data = json.data ?? [];
+    cachedRemoteData = data;
+    cachedRemoteAt = now;
+    return data;
+  } catch {
+    return [];
+  }
+}
+
 export async function GET() {
   try {
     const client = getSupabaseClient();
 
-    // Get total submissions count
-    const { count: totalStores, error: storeErr } = await client
-      .from('submissions')
-      .select('*', { count: 'exact', head: true });
-    if (storeErr) throw new Error(`统计门店数失败: ${storeErr.message}`);
+    // 实时从远程 API 获取最新门店和图片数据
+    const submissions = await fetchRemoteSubmissions();
+    const totalStores = submissions.length;
+    const totalImages = submissions.reduce((sum: number, s: any) => sum + (s.images?.length || 0), 0);
 
-    // Get total images count
-    const { count: totalImages, error: imgErr } = await client
-      .from('images')
-      .select('*', { count: 'exact', head: true });
-    if (imgErr) throw new Error(`统计图片数失败: ${imgErr.message}`);
-
-    // Get review stats
+    // Get review stats from local DB
     const { data: reviewItems, error: reviewErr } = await client
       .from('review_items')
-      .select('review_status, category')
+      .select('review_status, category, priority')
       .limit(10000);
     if (reviewErr) throw new Error(`统计审核失败: ${reviewErr.message}`);
 
@@ -51,47 +71,35 @@ export async function GET() {
     const installing = installItems?.filter(i => i.install_status === 'installing').length ?? 0;
     const completedInstall = installItems?.filter(i => i.install_status === 'completed').length ?? 0;
 
-    // Get area progress
-    const { data: submissions, error: subErr } = await client
-      .from('submissions')
-      .select('area, id')
-      .limit(10000);
-    if (subErr) throw new Error(`获取区域数据失败: ${subErr.message}`);
-
+    // Get area progress from remote data
     const areaMap: Record<string, { total: number }> = {};
-    submissions?.forEach(s => {
+    submissions.forEach((s: any) => {
       if (!areaMap[s.area]) areaMap[s.area] = { total: 0 };
       areaMap[s.area].total++;
     });
 
-    // Get category stats from images - query each category separately to avoid 1000 row limit
+    // Get category stats from remote data
     const categoryMap: Record<string, { total: number; reviewed: number; pending: number }> = {};
-
-    // Count images per category using separate queries
-    const categoryCounts = await Promise.all(
-      CATEGORIES_EN.map(async (cat) => {
-        const { count, error } = await client
-          .from('images')
-          .select('*', { count: 'exact', head: true })
-          .eq('category', cat);
-        if (error) throw new Error(`统计分类 ${cat} 失败: ${error.message}`);
-        return { en: cat, zh: toChineseCategory(cat), total: count ?? 0 };
-      })
-    );
-
-    categoryCounts.forEach(({ zh, total }) => {
-      categoryMap[zh] = { total, reviewed: 0, pending: 0 };
+    CATEGORIES_EN.forEach(cat => {
+      categoryMap[toChineseCategory(cat)] = { total: 0, reviewed: 0, pending: 0 };
     });
 
-    // Count reviewed images per category
+    submissions.forEach((s: any) => {
+      (s.images || []).forEach((img: any) => {
+        const zh = toChineseCategory(img.category);
+        if (categoryMap[zh]) {
+          categoryMap[zh].total++;
+        }
+      });
+    });
+
+    // Count reviewed images per category from local review_items
     reviewItems?.forEach(r => {
       const catZh = toChineseCategory(r.category);
       if (categoryMap[catZh]) {
         if (r.review_status !== 'pending') {
           categoryMap[catZh].reviewed++;
         }
-      } else {
-        categoryMap[catZh] = { total: 0, reviewed: 0, pending: 0 };
       }
     });
 
@@ -103,8 +111,8 @@ export async function GET() {
     return NextResponse.json({
       success: true,
       data: {
-        totalStores: totalStores ?? 0,
-        totalImages: totalImages ?? 0,
+        totalStores,
+        totalImages,
         review: {
           pending: pendingReview,
           approved: approvedReview,
@@ -113,15 +121,15 @@ export async function GET() {
         },
         design: {
           pending: pendingDesign,
-          designing,
+          designing: designing,
           completed: completedDesign,
           confirmed: confirmedDesign,
           total: designItems?.length ?? 0,
         },
         installation: {
           pending: pendingInstall,
-          dispatched,
-          installing,
+          dispatched: dispatched,
+          installing: installing,
           completed: completedInstall,
           total: installItems?.length ?? 0,
         },
