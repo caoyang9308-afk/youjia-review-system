@@ -21,12 +21,39 @@ async function fetchRemoteSubmissions(): Promise<any[]> {
     });
     const json = await resp.json();
     const data = json.data ?? [];
+    // 远程API返回空时，降级到本地数据库
+    if (data.length === 0) {
+      return await fetchLocalSubmissions();
+    }
     cachedRemoteData = data;
     cachedRemoteAt = now;
     return data;
   } catch {
-    return [];
+    // 远程失败时降级到本地数据
+    return await fetchLocalSubmissions();
   }
+}
+
+async function fetchLocalSubmissions(): Promise<any[]> {
+  const client = getSupabaseClient();
+  const { data: submissions } = await client
+    .from('submissions')
+    .select('id, area, store_name')
+    .order('created_at', { ascending: false });
+  if (!submissions) return [];
+
+  const result = [];
+  for (const s of submissions) {
+    const { data: images } = await client
+      .from('images')
+      .select('id')
+      .eq('submission_id', s.id);
+    result.push({
+      ...s,
+      images: images || [],
+    });
+  }
+  return result;
 }
 
 export async function GET() {
