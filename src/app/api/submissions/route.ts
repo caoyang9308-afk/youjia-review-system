@@ -20,13 +20,41 @@ async function fetchRemoteSubmissions(): Promise<any[]> {
     });
     const json = await resp.json();
     const data = json.data ?? [];
+    // 远程API返回空时，降级到本地数据库
+    if (data.length === 0) {
+      return await fetchLocalSubmissions();
+    }
     cachedData = data;
     cachedAt = now;
     return data;
   } catch {
     // 远程失败时降级到本地数据
-    return [];
+    return await fetchLocalSubmissions();
   }
+}
+
+async function fetchLocalSubmissions(): Promise<any[]> {
+  const client = getSupabaseClient();
+  const { data: submissions, error: subErr } = await client
+    .from('submissions')
+    .select('id, area, store_name, remark, status, created_at, updated_at')
+    .order('created_at', { ascending: false });
+  if (subErr || !submissions) return [];
+
+  // 逐个查询每个门店的图片，避免1000条限制
+  const result = [];
+  for (const s of submissions) {
+    const { data: images } = await client
+      .from('images')
+      .select('id, submission_id, category, image_url, created_at')
+      .eq('submission_id', s.id);
+    result.push({
+      ...s,
+      images: images || [],
+    });
+  }
+
+  return result;
 }
 
 export async function GET(request: NextRequest) {
