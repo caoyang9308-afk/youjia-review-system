@@ -47,6 +47,7 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
   const [loading, setLoading] = useState(true);
   const [previewImage, setPreviewImage] = useState<ImagePreviewData | null>(null);
   const [saving, setSaving] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -275,6 +276,38 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
         </div>
       </div>
 
+      {/* Smart Search */}
+      <div className="bg-white rounded-xl p-4 border border-gray-100">
+        <div className="relative">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="11" cy="11" r="8" />
+            <path d="M21 21l-4.35-4.35" />
+          </svg>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder="智能搜索：输入门店名、区域、或图片类型（如玻璃贴、灯箱、门招）..."
+            className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-200 focus:border-[#1677ff] focus:ring-2 focus:ring-[#1677ff]/20 outline-none text-sm transition-all"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            >
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M18 6L6 18M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+        </div>
+        {searchQuery && (
+          <div className="mt-2 text-xs text-gray-500">
+            搜索 "{searchQuery}" - 智能匹配门店名、区域、图片类型
+          </div>
+        )}
+      </div>
+
       {/* Stats Bar */}
       <div className="bg-white rounded-xl p-4 border border-gray-100 flex flex-wrap gap-6">
         <div className="flex items-center gap-2">
@@ -301,7 +334,19 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
 
       {/* Store List */}
       <div className="space-y-3">
-        {submissions.map(submission => {
+        {submissions
+          .filter(s => {
+            if (!searchQuery) return true;
+            const q = searchQuery.toLowerCase();
+            // 智能匹配：门店名、区域、分类、备注
+            return (
+              s.store_name?.toLowerCase().includes(q) ||
+              s.area?.toLowerCase().includes(q) ||
+              s.remark?.toLowerCase().includes(q) ||
+              s.images.some(img => categoryDisplay(img.category).toLowerCase().includes(q))
+            );
+          })
+          .map(submission => {
           const isExpanded = expandedStore === submission.id;
           const storeImages = submission.images;
           const storeReviewItems = reviewItems.filter(r => r.submission_id === submission.id);
