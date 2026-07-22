@@ -54,9 +54,9 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
     try {
       const [subRes, revRes] = await Promise.all([
         fetch(`/api/submissions${activeArea !== '全部' ? `?area=${encodeURIComponent(activeArea)}` : ''}`, {
-          cache: 'force-cache',
+          cache: 'no-store',
         }),
-        fetch('/api/review', { cache: 'force-cache' }),
+        fetch('/api/review', { cache: 'no-store' }),
       ]);
       const subJson = await subRes.json();
       const revJson = await revRes.json();
