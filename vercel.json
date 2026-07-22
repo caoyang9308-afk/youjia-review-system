@@ -1,7 +1,6 @@
 {
   "installCommand": "pnpm install --no-frozen-lockfile",
-  "buildCommand": "pnpm build",
+  "buildCommand": "next build",
   "devCommand": "pnpm dev",
-  "framework": "nextjs",
-  "pnpmVersion": "9.15.4"
+  "framework": "nextjs"
 }
