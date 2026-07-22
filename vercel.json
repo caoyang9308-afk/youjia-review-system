@@ -1,6 +1,6 @@
 {
-  "installCommand": "pnpm install --no-frozen-lockfile",
-  "buildCommand": "next build",
-  "devCommand": "pnpm dev",
+  "installCommand": "cd /workspace/projects && pnpm install --no-frozen-lockfile",
+  "buildCommand": "cd /workspace/projects && next build",
+  "devCommand": "cd /workspace/projects && pnpm dev",
   "framework": "nextjs"
 }
