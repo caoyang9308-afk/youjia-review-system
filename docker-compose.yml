@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  youjia-review:
+    build: .
+    container_name: youjia-review-system
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - COZE_SUPABASE_URL=https://br-grand-grue-b150b09a.supabase2.aidap-global.cn-beijing.volces.com
+      - COZE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjMzNjUxMjEwNzEsInJvbGUiOiJhbm9uIn0.-oSG7Uvdp4dy_szwTde1pHNgklJjrXWFLGoQptkqfrU
+      - COZE_SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjMzNjUxMjEwNzEsInJvbGUiOiJzZXJ2aWNlX3JvbGUifQ.7HOv0t047p8qwWOI81Q9lb2MlxEh5MWyB60J-i0SDmI
+      - COZE_PROJECT_ENV=PROD
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
