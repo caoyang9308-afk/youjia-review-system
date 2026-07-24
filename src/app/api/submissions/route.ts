@@ -1,38 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/storage/database/supabase-client-simple';
 
-const REMOTE_API = 'https://5880716d-e978-4840-8f0f-1438eebd70f6.dev.coze.site/api/public/submissions';
-
-// 缓存远程数据，5秒内不重复请求
-let cachedData: any[] | null = null;
-let cachedAt = 0;
-const CACHE_TTL = 5000;
-
-async function fetchRemoteSubmissions(): Promise<any[]> {
-  const now = Date.now();
-  if (cachedData && now - cachedAt < CACHE_TTL) {
-    return cachedData;
-  }
-  try {
-    const resp = await fetch(REMOTE_API, {
-      signal: AbortSignal.timeout(30000),
-      next: { revalidate: 5 },
-    });
-    const json = await resp.json();
-    const data = json.data ?? [];
-    // 远程API返回空时，降级到本地数据库
-    if (data.length === 0) {
-      return await fetchLocalSubmissions();
-    }
-    cachedData = data;
-    cachedAt = now;
-    return data;
-  } catch {
-    // 远程失败时降级到本地数据
-    return await fetchLocalSubmissions();
-  }
-}
-
+// 直接从本地数据库获取数据，不依赖远程 API
 async function fetchLocalSubmissions(): Promise<any[]> {
   const client = supabaseAdmin;
   const { data: submissions, error: subErr } = await client
@@ -41,7 +10,7 @@ async function fetchLocalSubmissions(): Promise<any[]> {
     .order('created_at', { ascending: false });
   if (subErr || !submissions) return [];
 
-  // 逐个查询每个门店的图片，避免1000条限制
+  // 逐个查询每个门店的图片，避免 1000 条限制
   const result = [];
   for (const s of submissions) {
     const { data: images } = await client
@@ -59,33 +28,13 @@ async function fetchLocalSubmissions(): Promise<any[]> {
 
 export async function GET(request: NextRequest) {
   try {
+    const client = supabaseAdmin;
     const { searchParams } = new URL(request.url);
     const area = searchParams.get('area');
     const storeType = searchParams.get('storeType');
 
-    // 实时从远程 API 拉取最新数据
-    let submissions = await fetchRemoteSubmissions();
-
-    // 从本地数据库获取 store_type 和 review_tags 字段（补充远程数据）
-    const client = supabaseAdmin;
-    const { data: localSubmissions } = await client
-      .from('submissions')
-      .select('id, store_type, review_tags');
-    
-    const localMap = new Map<string, { store_type: string | null; review_tags: string | null }>();
-    (localSubmissions || []).forEach((s: any) => {
-      localMap.set(s.id, { store_type: s.store_type, review_tags: s.review_tags });
-    });
-
-    // 将本地字段注入到 submissions 数据中
-    submissions = submissions.map((s: any) => {
-      const local = localMap.get(s.id);
-      return {
-        ...s,
-        store_type: s.store_type || local?.store_type || '',
-        review_tags: s.review_tags || local?.review_tags || '',
-      };
-    });
+    // 从本地数据库获取数据
+    let submissions = await fetchLocalSubmissions();
 
     // 区域筛选
     if (area && area !== '全部') {
