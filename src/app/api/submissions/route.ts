@@ -112,7 +112,6 @@ export async function GET(request: NextRequest) {
     }
 
     // 从本地数据库获取审核状态
-    const client = supabaseAdmin;
     const { data: reviewItems } = await client
       .from('review_items')
       .select('image_id, review_status, priority')
