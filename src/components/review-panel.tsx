@@ -641,25 +641,25 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
             <h3 className="text-lg font-semibold mb-4">编辑门店标签</h3>
             <p className="text-sm text-gray-600 mb-4">{selectedStore.store_name}</p>
             <div className="flex flex-wrap gap-2 mb-6">
-              {Object.values(REVIEW_ACTIONS).map(action => {
-                const isSelected = selectedStore.review_tags?.includes(action.label);
+              {REVIEW_TAGS.map(tag => {
+                const isSelected = selectedStore.review_tags?.includes(tag.label);
                 return (
                   <button
-                    key={action.label}
+                    key={tag.label}
                     onClick={() => {
                       const currentTags = selectedStore.review_tags || [];
                       const newTags = isSelected
-                        ? currentTags.filter((t: string) => t !== action.label)
-                        : [...currentTags, action.label];
+                        ? currentTags.filter((t: string) => t !== tag.label)
+                        : [...currentTags, tag.label];
                       setSelectedStore({ ...selectedStore, review_tags: newTags });
                     }}
                     className={`inline-flex items-center px-3 py-1.5 rounded text-sm font-medium transition-colors ${
                       isSelected
-                        ? `${action.color} text-white`
+                        ? `${tag.color} text-white`
                         : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                     }`}
                   >
-                    {action.icon} {action.label}
+                    {tag.label}
                   </button>
                 );
               })}
