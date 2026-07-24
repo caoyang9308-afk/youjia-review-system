@@ -171,6 +171,34 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
     }
   };
 
+  const handleSaveStoreTags = async (storeTags: string[]) => {
+    if (!selectedStore) return;
+    setSaving(true);
+    try {
+      const res = await fetch('/api/review', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'update',
+          items: [{ id: selectedStore.id, review_tags: storeTags }],
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setReviewItems(prev =>
+          prev.map(r => r.submission_id === selectedStore.id ? { ...r, review_tags: storeTags } : r)
+        );
+        setShowTagDialog(false);
+        setSelectedStore(null);
+        onDataChange();
+      }
+    } catch {
+      // silently handle
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleInitReview = async (submissionId: string) => {
     setSaving(true);
     try {
@@ -241,6 +269,8 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
   const pendingCount = reviewItems.filter(r =>
     submissions.some(s => s.id === r.submission_id) && r.review_status === 'pending'
   ).length;
+  const [selectedStore, setSelectedStore] = useState<any>(null);
+  const [showTagDialog, setShowTagDialog] = useState(false);
 
   if (loading) {
     return (
@@ -409,7 +439,44 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
                     </svg>
                   </div>
                   <div className="text-left">
-                    <div className="font-medium text-gray-900">{submission.store_name}</div>
+                    <div className="font-medium text-gray-900 flex items-center gap-2">
+                      {submission.store_name}
+                      {submission.review_tags && (() => {
+                        try {
+                          const tags = JSON.parse(submission.review_tags);
+                          if (Array.isArray(tags) && tags.length > 0) {
+                            return (
+                              <div className="flex gap-1">
+                                {tags.map((tag: string) => (
+                                  <span
+                                    key={tag}
+                                    className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                                      tag === '1.0 更换' ? 'bg-red-50 text-red-700' :
+                                      tag === '2.0 更换' ? 'bg-orange-50 text-orange-700' :
+                                      tag === '3.0 更换' ? 'bg-yellow-50 text-yellow-700' :
+                                      'bg-gray-50 text-gray-600'
+                                    }`}
+                                  >
+                                    {tag}
+                                  </span>
+                                ))}
+                              </div>
+                            );
+                          }
+                        } catch {}
+                        return null;
+                      })()}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedStore(submission);
+                          setShowTagDialog(true);
+                        }}
+                        className="text-xs text-[#1677ff] hover:text-[#4096ff] px-2 py-0.5 rounded hover:bg-[#e6f4ff] transition-colors"
+                      >
+                        编辑标签
+                      </button>
+                    </div>
                     <div className="text-xs text-gray-500">{submission.area} · {storeTotal} 张图片</div>
                   </div>
                 </div>
