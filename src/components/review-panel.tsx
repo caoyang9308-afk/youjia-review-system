@@ -471,6 +471,7 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
                                       tag.includes('1.0') ? 'bg-red-50 text-red-700' :
                                       tag.includes('2.0') ? 'bg-orange-50 text-orange-700' :
                                       tag.includes('3.0') ? 'bg-yellow-50 text-yellow-700' :
+                                      tag.includes('不整改') ? 'bg-gray-200 text-gray-700' :
                                       tag.includes('多灯箱') || tag.includes('大户外') ? 'bg-blue-50 text-blue-700' :
                                       tag.includes('最新装修') ? 'bg-green-50 text-green-700' :
                                       tag.includes('次新装修') ? 'bg-cyan-50 text-cyan-700' :

@@ -42,13 +42,14 @@ export function toEnglishCategory(zh: string): string {
 export const AREAS = ['全部', '苏州一区', '苏州二区', '苏州三区', '苏州四区', '苏州五区', '南京区域', '无锡区域', '浙江区域'];
 
 // Store types for filtering
-export const STORE_TYPES = ['全部', '多灯箱门店', '大户外广告', '最新装修', '次新装修', '老装修', '荣誉牌不一致', '1.0 更换门店', '2.0 更换门店', '3.0 更换门店'];
+export const STORE_TYPES = ['全部', '多灯箱门店', '大户外广告', '最新装修', '次新装修', '老装修', '荣誉牌不一致', '1.0 更换门店', '2.0 更换门店', '3.0 更换门店', '不整改'];
 
 // 审核标签
 export const REVIEW_TAGS = [
   { id: "1.0_replacement", label: "1.0 更换门店", color: "bg-red-100 text-red-700" },
   { id: "2.0_replacement", label: "2.0 更换门店", color: "bg-orange-100 text-orange-700" },
   { id: "3.0_replacement", label: "3.0 更换门店", color: "bg-yellow-100 text-yellow-700" },
+  { id: "no_reform", label: "不整改", color: "bg-gray-100 text-gray-700" },
 ] as const;
 
 export type ReviewTagId = typeof REVIEW_TAGS[number]["id"];
