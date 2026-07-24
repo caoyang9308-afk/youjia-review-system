@@ -671,10 +671,12 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({
-                        type: 'update',
-                        id: selectedStore.id,
-                        status: 'pending',
-                        review_tags: selectedStore.review_tags || [],
+                        action: 'update',
+                        items: [{
+                          id: selectedStore.id,
+                          review_status: 'pending',
+                          review_tags: selectedStore.review_tags || [],
+                        }],
                       }),
                     });
                     const data = await res.json();
