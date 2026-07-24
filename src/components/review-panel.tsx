@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { ImagePreview, type ImagePreviewData } from './image-preview';
-import { CATEGORIES_ZH, CATEGORY_REVERSE_MAP, CATEGORY_MAP, AREAS, STORE_TYPES, smartSearchMatch } from '@/lib/constants';
+import { CATEGORIES_ZH, CATEGORY_REVERSE_MAP, CATEGORY_MAP, AREAS, STORE_TYPES, REVIEW_TAGS, smartSearchMatch } from '@/lib/constants';
 
 interface Image {
   id: string;
@@ -15,6 +15,7 @@ interface Submission {
   area: string;
   store_name: string;
   store_type: string | null;
+  review_tags: string | null;
   remark: string | null;
   status: string;
   images: Image[];
@@ -106,19 +107,22 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
     }))
   );
 
-  const handleReview = async (imageId: string, status: 'approved' | 'rejected', priority: string = 'urgent') => {
+  const handleReview = async (imageId: string, status: 'approved' | 'rejected', priority: string = 'urgent', tag?: string) => {
     const reviewItemId = getReviewItemId(imageId);
     if (!reviewItemId) return;
 
     setSaving(true);
     try {
+      const body: any = {
+        action: 'update',
+        items: [{ id: reviewItemId, review_status: status, priority }],
+      };
+      if (tag) body.items[0].review_tags = tag;
+      
       const res = await fetch('/api/review', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'update',
-          items: [{ id: reviewItemId, review_status: status, priority }],
-        }),
+        body: JSON.stringify(body),
       });
       const json = await res.json();
       if (json.success) {
@@ -134,7 +138,7 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
     }
   };
 
-  const handlePreviewReview = async (imageId: string, status: string, priority?: string, submissionId?: string, category?: string) => {
+  const handlePreviewReview = async (imageId: string, status: string, priority?: string, submissionId?: string, category?: string, tags?: string[]) => {
     setSaving(true);
     try {
       const res = await fetch('/api/review', {
@@ -142,7 +146,7 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'update',
-          items: [{ image_id: imageId, review_status: status, priority, submission_id: submissionId, category }],
+          items: [{ image_id: imageId, review_status: status, priority, submission_id: submissionId, category, review_tags: tags }],
         }),
       });
       const json = await res.json();
@@ -487,6 +491,21 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
                                       {status === 'approved' ? '✓ 维持现状' : priority === 'scheduled' ? '📅 择期更换' : '🔄 立即更换'}
                                     </div>
                                   )}
+                                </div>
+                                <div className="p-2 flex gap-1 flex-wrap">
+                                  {REVIEW_TAGS.map((tag) => (
+                                    <button
+                                      key={tag}
+                                      onClick={() => handleReview(img.id, status || 'pending', priority || 'urgent', tag)}
+                                      className={`px-2 py-1 text-xs rounded-md font-medium transition-colors ${
+                                        currentTags.includes(tag)
+                                          ? 'bg-purple-500 text-white'
+                                          : 'bg-purple-50 text-purple-600 hover:bg-purple-100'
+                                      }`}
+                                    >
+                                      {tag}
+                                    </button>
+                                  ))}
                                 </div>
                                 <div className="p-2 flex gap-1">
                                   <button

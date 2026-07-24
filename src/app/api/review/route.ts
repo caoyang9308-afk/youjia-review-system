@@ -149,6 +149,15 @@ export async function POST(request: NextRequest) {
         .maybeSingle();
       if (updateErr) throw new Error(`更新审核项失败: ${updateErr.message}`);
 
+      // Update submission with review tags if provided
+      if (item.review_tags && item.review_tags.length > 0) {
+        const { error: tagErr } = await client
+          .from('submissions')
+          .update({ review_tags: item.review_tags.join(',') })
+          .eq('id', item.submission_id || (data as any)?.submission_id);
+        if (tagErr) console.error('更新审核标签失败:', tagErr.message);
+      }
+
       // If rejected with urgent priority, auto-create design task
       if (item.review_status === 'rejected' && priority === 'urgent' && data) {
         const { data: existingDesign } = await client
@@ -195,6 +204,15 @@ export async function POST(request: NextRequest) {
           })
           .eq('id', existing.id);
         if (updateErr) throw new Error(`更新审核项失败: ${updateErr.message}`);
+
+        // Update submission with review tags if provided
+        if (item.review_tags && item.review_tags.length > 0) {
+          const { error: tagErr } = await client
+            .from('submissions')
+            .update({ review_tags: item.review_tags.join(',') })
+            .eq('id', item.submission_id || existing.submission_id);
+          if (tagErr) console.error('更新审核标签失败:', tagErr.message);
+        }
       } else {
         // Create new review item using submission_id from request
         if (!item.submission_id) throw new Error('缺少 submission_id');

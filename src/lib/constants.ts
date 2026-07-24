@@ -44,6 +44,15 @@ export const AREAS = ['全部', '苏州一区', '苏州二区', '苏州三区', 
 // Store types for filtering
 export const STORE_TYPES = ['全部', '多灯箱门店', '大户外广告', '老店', '荣誉牌不一致'];
 
+// 审核标签
+export const REVIEW_TAGS = [
+  { id: "1.0_replacement", label: "1.0 更换门店", color: "bg-red-100 text-red-700" },
+  { id: "2.0_replacement", label: "2.0 更换", color: "bg-orange-100 text-orange-700" },
+  { id: "3.0_replacement", label: "3.0 更换", color: "bg-yellow-100 text-yellow-700" },
+] as const;
+
+export type ReviewTagId = typeof REVIEW_TAGS[number]["id"];
+
 // Smart search keywords mapping (用户搜索词 -> 匹配的分类关键词)
 export const SEARCH_KEYWORD_MAP: Record<string, string[]> = {
   '玻璃贴': ['灯箱', '软膜'],

@@ -13,6 +13,7 @@ export const submissions = pgTable(
     area: text("area").notNull(),
     store_name: text("store_name").notNull(),
     store_type: text("store_type"),
+    review_tags: text("review_tags"),
     remark: text("remark"),
     status: text("status").notNull().default("pending"),
     created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
@@ -22,6 +23,7 @@ export const submissions = pgTable(
     index("submissions_area_idx").on(table.area),
     index("submissions_status_idx").on(table.status),
     index("submissions_store_type_idx").on(table.store_type),
+    index("submissions_review_tags_idx").on(table.review_tags),
     index("submissions_created_at_idx").on(table.created_at),
   ]
 );
@@ -50,6 +52,7 @@ export const reviewItems = pgTable(
     category: text("category").notNull(),
     review_status: text("review_status").notNull().default("pending"),
     review_note: text("review_note"),
+    review_tags: text("review_tags").array(),
     priority: text("priority").notNull().default("urgent"),
     reviewed_at: timestamp("reviewed_at", { withTimezone: true }),
   },
