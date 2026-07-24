@@ -20,10 +20,15 @@ export default function Home() {
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [badges, setBadges] = useState({ review: 0, design: 0, installation: 0 });
+  const [storeType, setStoreType] = useState('全部');
 
-  const fetchDashboard = useCallback(async () => {
+  const fetchDashboard = useCallback(async (type?: string) => {
     try {
-      const res = await fetch('/api/dashboard');
+      const params = new URLSearchParams();
+      if (type && type !== '全部') {
+        params.set('storeType', type);
+      }
+      const res = await fetch(`/api/dashboard?${params.toString()}`);
       const json = await res.json();
       if (json.success) {
         setDashboardData(json.data);
@@ -41,12 +46,12 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    fetchDashboard();
-  }, [fetchDashboard]);
+    fetchDashboard(storeType);
+  }, [fetchDashboard, storeType]);
 
   const refreshData = useCallback(() => {
-    fetchDashboard();
-  }, [fetchDashboard]);
+    fetchDashboard(storeType);
+  }, [fetchDashboard, storeType]);
 
   return (
     <div className="min-h-screen bg-[#f5f7fa]">
@@ -120,7 +125,7 @@ export default function Home() {
           </div>
         ) : (
           <>
-            {activeTab === 'dashboard' && <Dashboard data={dashboardData} />}
+            {activeTab === 'dashboard' && <Dashboard data={dashboardData} storeType={storeType} onStoreTypeChange={setStoreType} />}
             {activeTab === 'review' && <ReviewPanel onDataChange={refreshData} />}
             {activeTab === 'design' && <DesignPanel onDataChange={refreshData} />}
             {activeTab === 'installation' && <InstallationPanel onDataChange={refreshData} />}

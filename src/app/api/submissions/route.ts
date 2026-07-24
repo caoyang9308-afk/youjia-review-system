@@ -61,6 +61,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const area = searchParams.get('area');
+    const storeType = searchParams.get('storeType');
 
     // 实时从远程 API 拉取最新数据
     let submissions = await fetchRemoteSubmissions();
@@ -68,6 +69,14 @@ export async function GET(request: NextRequest) {
     // 区域筛选
     if (area && area !== '全部') {
       submissions = submissions.filter((s: any) => s.area === area);
+    }
+
+    // 门店类型筛选
+    if (storeType && storeType !== '全部') {
+      submissions = submissions.filter((s: any) => {
+        const storeTypes = s.store_types || s.storeTypes || [];
+        return storeTypes.includes(storeType);
+      });
     }
 
     // 从本地数据库获取审核状态

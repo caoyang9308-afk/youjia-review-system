@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { ImagePreview, type ImagePreviewData } from './image-preview';
-import { CATEGORIES_ZH, CATEGORY_REVERSE_MAP, CATEGORY_MAP, AREAS, smartSearchMatch } from '@/lib/constants';
+import { CATEGORIES_ZH, CATEGORY_REVERSE_MAP, CATEGORY_MAP, AREAS, STORE_TYPES, smartSearchMatch } from '@/lib/constants';
 
 interface Image {
   id: string;
@@ -14,6 +14,7 @@ interface Submission {
   id: string;
   area: string;
   store_name: string;
+  store_type: string | null;
   remark: string | null;
   status: string;
   images: Image[];
@@ -43,6 +44,7 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [reviewItems, setReviewItems] = useState<ReviewItem[]>([]);
   const [activeArea, setActiveArea] = useState('全部');
+  const [activeStoreType, setActiveStoreType] = useState('全部');
   const [expandedStore, setExpandedStore] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [previewImage, setPreviewImage] = useState<ImagePreviewData | null>(null);
@@ -52,8 +54,12 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
+      const params = new URLSearchParams();
+      if (activeArea !== '全部') params.set('area', activeArea);
+      if (activeStoreType !== '全部') params.set('storeType', activeStoreType);
+      
       const [subRes, revRes] = await Promise.all([
-        fetch(`/api/submissions${activeArea !== '全部' ? `?area=${encodeURIComponent(activeArea)}` : ''}`, {
+        fetch(`/api/submissions?${params.toString()}`, {
           cache: 'no-store',
         }),
         fetch('/api/review', { cache: 'no-store' }),
@@ -67,7 +73,7 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
     } finally {
       setLoading(false);
     }
-  }, [activeArea]);
+  }, [activeArea, activeStoreType]);
 
   useEffect(() => {
     fetchData();
@@ -261,7 +267,7 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
     <div className="space-y-4">
       {/* Area Filter Tabs */}
       <div className="bg-white rounded-xl p-4 border border-gray-100">
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 mb-3">
           {AREAS.map(area => (
             <button
               key={area}
@@ -273,6 +279,22 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
               }`}
             >
               {area}
+            </button>
+          ))}
+        </div>
+        <div className="flex flex-wrap gap-2 pt-3 border-t border-gray-100">
+          <span className="text-sm text-gray-500 py-1.5">门店类型:</span>
+          {STORE_TYPES.map(type => (
+            <button
+              key={type}
+              onClick={() => setActiveStoreType(type)}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                activeStoreType === type
+                  ? 'bg-[#1677ff] text-white'
+                  : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              {type}
             </button>
           ))}
         </div>

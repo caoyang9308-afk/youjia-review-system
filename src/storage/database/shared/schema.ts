@@ -12,6 +12,7 @@ export const submissions = pgTable(
     id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
     area: text("area").notNull(),
     store_name: text("store_name").notNull(),
+    store_type: text("store_type"),
     remark: text("remark"),
     status: text("status").notNull().default("pending"),
     created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
@@ -20,6 +21,7 @@ export const submissions = pgTable(
   (table) => [
     index("submissions_area_idx").on(table.area),
     index("submissions_status_idx").on(table.status),
+    index("submissions_store_type_idx").on(table.store_type),
     index("submissions_created_at_idx").on(table.created_at),
   ]
 );

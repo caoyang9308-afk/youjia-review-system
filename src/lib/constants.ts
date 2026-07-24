@@ -41,6 +41,9 @@ export function toEnglishCategory(zh: string): string {
 // Area list
 export const AREAS = ['全部', '苏州一区', '苏州二区', '苏州三区', '苏州四区', '苏州五区', '南京区域', '无锡区域', '浙江区域'];
 
+// Store types for filtering
+export const STORE_TYPES = ['全部', '多灯箱门店', '大户外广告', '老店', '荣誉牌不一致'];
+
 // Smart search keywords mapping (用户搜索词 -> 匹配的分类关键词)
 export const SEARCH_KEYWORD_MAP: Record<string, string[]> = {
   '玻璃贴': ['灯箱', '软膜'],

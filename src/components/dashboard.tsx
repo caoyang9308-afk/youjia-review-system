@@ -1,6 +1,7 @@
 'use client';
 
-import { CATEGORIES_ZH } from '@/lib/constants';
+import { CATEGORIES_ZH, STORE_TYPES } from '@/lib/constants';
+import { useState } from 'react';
 
 export interface DashboardData {
   totalStores: number;
@@ -12,7 +13,7 @@ export interface DashboardData {
   categories: Record<string, { total: number; reviewed: number; pending: number }>;
 }
 
-export function Dashboard({ data }: { data: DashboardData | null }) {
+export function Dashboard({ data, storeType, onStoreTypeChange }: { data: DashboardData | null; storeType?: string; onStoreTypeChange?: (type: string) => void }) {
   if (!data || (data.totalStores === 0 && data.totalImages === 0)) {
     return (
       <div className="flex flex-col items-center justify-center h-64 text-gray-400">
@@ -40,6 +41,28 @@ export function Dashboard({ data }: { data: DashboardData | null }) {
 
   return (
     <div className="space-y-6">
+      {/* Store Type Filter */}
+      {onStoreTypeChange && (
+        <div className="bg-white rounded-xl p-4 border border-gray-100">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm text-gray-500">门店类型:</span>
+            {STORE_TYPES.map(type => (
+              <button
+                key={type}
+                onClick={() => onStoreTypeChange(type)}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                  storeType === type
+                    ? 'bg-[#1677ff] text-white shadow-sm'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                {type}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Stat Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
         {statCards.map(card => (
