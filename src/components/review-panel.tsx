@@ -441,19 +441,41 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
                   <div className="text-left">
                     <div className="font-medium text-gray-900 flex items-center gap-2">
                       {submission.store_name}
-                      {submission.review_tags && (() => {
+                      {(() => {
                         try {
-                          const tags = JSON.parse(submission.review_tags);
-                          if (Array.isArray(tags) && tags.length > 0) {
+                          // 合并 store_type 和 review_tags
+                          const allTags: string[] = [];
+                          
+                          // 解析 store_type（逗号分隔的字符串）
+                          if (submission.store_type) {
+                            const storeTypes = submission.store_type.split(',').map((t: string) => t.trim()).filter(Boolean);
+                            allTags.push(...storeTypes);
+                          }
+                          
+                          // 解析 review_tags（逗号分隔的字符串）
+                          if (submission.review_tags) {
+                            const reviewTags = submission.review_tags.split(',').map((t: string) => t.trim()).filter(Boolean);
+                            allTags.push(...reviewTags);
+                          }
+                          
+                          // 去重
+                          const uniqueTags = [...new Set(allTags)];
+                          
+                          if (uniqueTags.length > 0) {
                             return (
-                              <div className="flex gap-1">
-                                {tags.map((tag: string) => (
+                              <div className="flex gap-1 flex-wrap">
+                                {uniqueTags.map((tag: string) => (
                                   <span
                                     key={tag}
                                     className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                                      tag === '1.0 更换' ? 'bg-red-50 text-red-700' :
-                                      tag === '2.0 更换' ? 'bg-orange-50 text-orange-700' :
-                                      tag === '3.0 更换' ? 'bg-yellow-50 text-yellow-700' :
+                                      tag.includes('1.0') ? 'bg-red-50 text-red-700' :
+                                      tag.includes('2.0') ? 'bg-orange-50 text-orange-700' :
+                                      tag.includes('3.0') ? 'bg-yellow-50 text-yellow-700' :
+                                      tag.includes('多灯箱') || tag.includes('大户外') ? 'bg-blue-50 text-blue-700' :
+                                      tag.includes('最新装修') ? 'bg-green-50 text-green-700' :
+                                      tag.includes('次新装修') ? 'bg-cyan-50 text-cyan-700' :
+                                      tag.includes('老装修') ? 'bg-gray-50 text-gray-700' :
+                                      tag.includes('荣誉牌') ? 'bg-purple-50 text-purple-700' :
                                       'bg-gray-50 text-gray-600'
                                     }`}
                                   >

@@ -71,11 +71,22 @@ export async function GET(request: NextRequest) {
       submissions = submissions.filter((s: any) => s.area === area);
     }
 
-    // 门店类型筛选
+    // 门店类型筛选（支持 store_type 和 review_tags）
     if (storeType && storeType !== '全部') {
       submissions = submissions.filter((s: any) => {
+        // 检查 store_type 字段（逗号分隔的字符串）
+        const storeTypeStr = s.store_type || '';
+        if (storeTypeStr.includes(storeType)) return true;
+        
+        // 检查 review_tags 字段（逗号分隔的字符串）
+        const reviewTagsStr = s.review_tags || '';
+        if (reviewTagsStr.includes(storeType)) return true;
+        
+        // 检查 store_types 数组（兼容旧数据）
         const storeTypes = s.store_types || s.storeTypes || [];
-        return storeTypes.includes(storeType);
+        if (storeTypes.includes(storeType)) return true;
+        
+        return false;
       });
     }
 
