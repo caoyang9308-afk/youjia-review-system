@@ -42,20 +42,16 @@ export function toEnglishCategory(zh: string): string {
 export const AREAS = ['全部', '苏州一区', '苏州二区', '苏州三区', '苏州四区', '苏州五区', '南京区域', '无锡区域', '浙江区域'];
 
 // Store types for filtering
-export const STORE_TYPES = ['全部', '多灯箱门店', '大户外广告', '最新装修', '次新装修', '老装修', '荣誉牌不一致', '1.0 更换门店', '2.0 更换门店', '3.0 更换门店', '不整改', '不改造门店', '70+ 元素'];
+export const STORE_TYPES = ['全部', '多灯箱门店', '大户外广告', '荣誉牌不一致', '1.0 更换门店', '2.0 更换门店', '3.0 更换门店', '不改造门店', '70+ 元素'];
 
 // 审核标签（与 STORE_TYPES 保持一致，去掉"全部"）
 export const REVIEW_TAGS = [
   { id: "multi_lightbox", label: "多灯箱门店", color: "bg-blue-100 text-blue-700" },
   { id: "large_outdoor", label: "大户外广告", color: "bg-blue-100 text-blue-700" },
-  { id: "new_renovation", label: "最新装修", color: "bg-green-100 text-green-700" },
-  { id: "semi_new_renovation", label: "次新装修", color: "bg-cyan-100 text-cyan-700" },
-  { id: "old_renovation", label: "老装修", color: "bg-gray-100 text-gray-700" },
   { id: "honor_mismatch", label: "荣誉牌不一致", color: "bg-purple-100 text-purple-700" },
   { id: "1.0_replacement", label: "1.0 更换门店", color: "bg-red-100 text-red-700" },
   { id: "2.0_replacement", label: "2.0 更换门店", color: "bg-orange-100 text-orange-700" },
   { id: "3.0_replacement", label: "3.0 更换门店", color: "bg-yellow-100 text-yellow-700" },
-  { id: "no_reform", label: "不整改", color: "bg-gray-200 text-gray-700" },
   { id: "no_renovation", label: "不改造门店", color: "bg-gray-200 text-gray-700" },
   { id: "70_plus_elements", label: "70+ 元素", color: "bg-pink-100 text-pink-700" },
 ] as const;
