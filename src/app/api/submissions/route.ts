@@ -37,7 +37,7 @@ async function fetchLocalSubmissions(): Promise<any[]> {
   const client = supabaseAdmin;
   const { data: submissions, error: subErr } = await client
     .from('submissions')
-    .select('id, area, store_name, remark, status, created_at, updated_at')
+    .select('id, area, store_name, store_type, review_tags, remark, status, created_at, updated_at')
     .order('created_at', { ascending: false });
   if (subErr || !submissions) return [];
 
@@ -65,6 +65,27 @@ export async function GET(request: NextRequest) {
 
     // 实时从远程 API 拉取最新数据
     let submissions = await fetchRemoteSubmissions();
+
+    // 从本地数据库获取 store_type 和 review_tags 字段（补充远程数据）
+    const client = supabaseAdmin;
+    const { data: localSubmissions } = await client
+      .from('submissions')
+      .select('id, store_type, review_tags');
+    
+    const localMap = new Map<string, { store_type: string | null; review_tags: string | null }>();
+    (localSubmissions || []).forEach((s: any) => {
+      localMap.set(s.id, { store_type: s.store_type, review_tags: s.review_tags });
+    });
+
+    // 将本地字段注入到 submissions 数据中
+    submissions = submissions.map((s: any) => {
+      const local = localMap.get(s.id);
+      return {
+        ...s,
+        store_type: s.store_type || local?.store_type || '',
+        review_tags: s.review_tags || local?.review_tags || '',
+      };
+    });
 
     // 区域筛选
     if (area && area !== '全部') {
