@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseClient } from '@/storage/database/supabase-client';
+import { supabaseAdmin } from '@/storage/database/supabase-client-simple';
 
 export async function GET(request: NextRequest) {
   try {
-    const client = getSupabaseClient();
+    const client = supabaseAdmin;
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
     const priority = searchParams.get('priority');
@@ -85,7 +85,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const client = getSupabaseClient();
+    const client = supabaseAdmin;
     const body = await request.json();
     const { action, id, design_status, design_url, designer_note } = body as {
       action: 'update';

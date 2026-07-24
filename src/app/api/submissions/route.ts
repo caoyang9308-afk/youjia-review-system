@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseClient } from '@/storage/database/supabase-client';
+import { supabaseAdmin } from '@/storage/database/supabase-client-simple';
 
 const REMOTE_API = 'https://5880716d-e978-4840-8f0f-1438eebd70f6.dev.coze.site/api/public/submissions';
 
@@ -34,7 +34,7 @@ async function fetchRemoteSubmissions(): Promise<any[]> {
 }
 
 async function fetchLocalSubmissions(): Promise<any[]> {
-  const client = getSupabaseClient();
+  const client = supabaseAdmin;
   const { data: submissions, error: subErr } = await client
     .from('submissions')
     .select('id, area, store_name, remark, status, created_at, updated_at')
@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 从本地数据库获取审核状态
-    const client = getSupabaseClient();
+    const client = supabaseAdmin;
     const { data: reviewItems } = await client
       .from('review_items')
       .select('image_id, review_status, priority')

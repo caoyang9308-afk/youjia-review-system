@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseClient } from '@/storage/database/supabase-client';
+import { supabaseAdmin } from '@/storage/database/supabase-client-simple';
 
 export async function GET(request: NextRequest) {
   try {
-    const client = getSupabaseClient();
+    const client = supabaseAdmin;
     const { searchParams } = new URL(request.url);
     const submissionId = searchParams.get('submission_id');
     const status = searchParams.get('status');
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const client = getSupabaseClient();
+    const client = supabaseAdmin;
     const body = await request.json();
     const { action, items } = body as {
       action: 'batch_create' | 'batch_update' | 'update';

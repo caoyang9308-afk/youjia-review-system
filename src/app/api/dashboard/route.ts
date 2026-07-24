@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getSupabaseClient } from '@/storage/database/supabase-client';
+import { supabaseAdmin } from '@/storage/database/supabase-client-simple';
 import { toChineseCategory, CATEGORIES_EN } from '@/lib/constants';
 
 const REMOTE_API = 'https://5880716d-e978-4840-8f0f-1438eebd70f6.dev.coze.site/api/public/submissions';
@@ -35,7 +35,7 @@ async function fetchRemoteSubmissions(): Promise<any[]> {
 }
 
 async function fetchLocalSubmissions(): Promise<any[]> {
-  const client = getSupabaseClient();
+  const client = supabaseAdmin;
   const { data: submissions } = await client
     .from('submissions')
     .select('id, area, store_name')
@@ -58,7 +58,7 @@ async function fetchLocalSubmissions(): Promise<any[]> {
 
 export async function GET() {
   try {
-    const client = getSupabaseClient();
+    const client = supabaseAdmin;
 
     // 实时从远程 API 获取最新门店和图片数据
     const submissions = await fetchRemoteSubmissions();
