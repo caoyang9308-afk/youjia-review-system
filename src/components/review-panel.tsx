@@ -653,12 +653,17 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
             <p className="text-sm text-gray-600 mb-4">{selectedStore.store_name}</p>
             <div className="flex flex-wrap gap-2 mb-6">
               {REVIEW_TAGS.map(tag => {
-                const isSelected = selectedStore.review_tags?.includes(tag.label);
+                // 将 review_tags 字符串转换为数组
+                const currentTags = selectedStore.review_tags 
+                  ? (Array.isArray(selectedStore.review_tags) 
+                    ? selectedStore.review_tags 
+                    : selectedStore.review_tags.split(',').map((t: string) => t.trim()).filter(Boolean))
+                  : [];
+                const isSelected = currentTags.includes(tag.label);
                 return (
                   <button
                     key={tag.label}
                     onClick={() => {
-                      const currentTags = selectedStore.review_tags || [];
                       const newTags = isSelected
                         ? currentTags.filter((t: string) => t !== tag.label)
                         : [...currentTags, tag.label];
@@ -689,6 +694,11 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
                 onClick={async () => {
                   if (!selectedStore) return;
                   try {
+                    // 确保 review_tags 是数组
+                    const reviewTags = Array.isArray(selectedStore.review_tags)
+                      ? selectedStore.review_tags
+                      : (selectedStore.review_tags || '').split(',').map((t: string) => t.trim()).filter(Boolean);
+                    
                     const res = await fetch('/api/review', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
@@ -697,7 +707,7 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
                         items: [{
                           id: selectedStore.id,
                           review_status: 'pending',
-                          review_tags: selectedStore.review_tags || [],
+                          review_tags: reviewTags,
                         }],
                       }),
                     });
