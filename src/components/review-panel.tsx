@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { ImagePreview, type ImagePreviewData } from './image-preview';
-import { CATEGORIES_ZH, CATEGORY_REVERSE_MAP, CATEGORY_MAP, AREAS, STORE_TYPES, REVIEW_TAGS, smartSearchMatch } from '@/lib/constants';
+import { CATEGORIES_ZH, CATEGORY_REVERSE_MAP, CATEGORY_MAP, AREAS, STORE_TYPES, REVIEW_TAGS, REVIEW_ACTIONS, smartSearchMatch } from '@/lib/constants';
 
 interface Image {
   id: string;
@@ -632,6 +632,81 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
           onNavigate={(id) => setPreviewImage(allImages.find(i => i.id === id) || null)}
           onReview={handlePreviewReview}
         />
+      )}
+
+      {/* Tag Edit Dialog */}
+      {showTagDialog && selectedStore && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl p-6 max-w-md w-full">
+            <h3 className="text-lg font-semibold mb-4">编辑门店标签</h3>
+            <p className="text-sm text-gray-600 mb-4">{selectedStore.store_name}</p>
+            <div className="flex flex-wrap gap-2 mb-6">
+              {Object.values(REVIEW_ACTIONS).map(action => {
+                const isSelected = selectedStore.review_tags?.includes(action.label);
+                return (
+                  <button
+                    key={action.label}
+                    onClick={() => {
+                      const currentTags = selectedStore.review_tags || [];
+                      const newTags = isSelected
+                        ? currentTags.filter((t: string) => t !== action.label)
+                        : [...currentTags, action.label];
+                      setSelectedStore({ ...selectedStore, review_tags: newTags });
+                    }}
+                    className={`inline-flex items-center px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+                      isSelected
+                        ? `${action.color} text-white`
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    {action.icon} {action.label}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => {
+                  setShowTagDialog(false);
+                  setSelectedStore(null);
+                }}
+                className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800"
+              >
+                取消
+              </button>
+              <button
+                onClick={async () => {
+                  if (!selectedStore) return;
+                  try {
+                    const res = await fetch('/api/review', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        type: 'update',
+                        id: selectedStore.id,
+                        status: 'pending',
+                        review_tags: selectedStore.review_tags || [],
+                      }),
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                      setShowTagDialog(false);
+                      setSelectedStore(null);
+                      fetchData();
+                    } else {
+                      alert(data.error || '保存标签失败');
+                    }
+                  } catch (err) {
+                    alert('保存标签失败');
+                  }
+                }}
+                className="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm hover:bg-blue-600"
+              >
+                保存
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
