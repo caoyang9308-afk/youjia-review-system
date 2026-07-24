@@ -559,17 +559,6 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
                                     </div>
                                   )}
                                 </div>
-                                <div className="p-2 flex gap-1 flex-wrap">
-                                  {REVIEW_TAGS.map((tag) => (
-                                    <button
-                                      key={tag.id}
-                                      onClick={() => handleReview(img.id, (status || 'approved') as 'approved' | 'rejected', priority || 'urgent', tag.id)}
-                                      className={`px-2 py-1 text-xs rounded-md font-medium transition-colors ${tag.color}`}
-                                    >
-                                      {tag.label}
-                                    </button>
-                                  ))}
-                                </div>
                                 <div className="p-2 flex gap-1">
                                   <button
                                     onClick={() => handleReview(img.id, 'approved')}
