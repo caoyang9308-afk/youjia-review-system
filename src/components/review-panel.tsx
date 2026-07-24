@@ -703,10 +703,9 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({
-                        action: 'update',
+                        action: 'update_tags',
                         items: [{
                           id: selectedStore.id,
-                          review_status: 'pending',
                           review_tags: reviewTags,
                         }],
                       }),

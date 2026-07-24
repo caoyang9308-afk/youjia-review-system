@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
     const client = supabaseAdmin;
     const body = await request.json();
     const { action, items } = body as {
-      action: 'batch_create' | 'batch_update' | 'update';
+      action: 'batch_create' | 'batch_update' | 'update' | 'update_tags';
       items: Array<{
         id?: string;
         submission_id?: string;
@@ -48,6 +48,7 @@ export async function POST(request: NextRequest) {
         review_status?: string;
         priority?: string;
         review_note?: string;
+        review_tags?: string[];
       }>;
     };
 
@@ -176,6 +177,35 @@ export async function POST(request: NextRequest) {
       }
 
       return NextResponse.json({ success: true, data });
+    }
+
+    // Update submission review tags (separate action)
+    if (action === 'update_tags' && items[0]?.id) {
+      const item = items[0];
+      const reviewTags = (item as any).review_tags;
+      
+      if (reviewTags && reviewTags.length > 0) {
+        const { error: tagErr } = await client
+          .from('submissions')
+          .update({ review_tags: reviewTags.join(',') })
+          .eq('id', item.id);
+        if (tagErr) {
+          console.error('更新审核标签失败:', tagErr.message);
+          return NextResponse.json({ success: false, error: tagErr.message }, { status: 500 });
+        }
+      } else {
+        // Clear tags if empty
+        const { error: tagErr } = await client
+          .from('submissions')
+          .update({ review_tags: null })
+          .eq('id', item.id);
+        if (tagErr) {
+          console.error('清除审核标签失败:', tagErr.message);
+          return NextResponse.json({ success: false, error: tagErr.message }, { status: 500 });
+        }
+      }
+
+      return NextResponse.json({ success: true, data: { updated: true } });
     }
 
     // Update by image_id (used from image preview modal)
