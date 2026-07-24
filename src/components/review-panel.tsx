@@ -317,7 +317,7 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
           ))}
         </div>
         <div className="flex flex-wrap gap-2 pt-3 border-t border-gray-100">
-          <span className="text-sm text-gray-500 py-1.5">门店类型:</span>
+          <span className="text-sm text-gray-500 py-1.5">门店标签:</span>
           {STORE_TYPES.map(type => (
             <button
               key={type}

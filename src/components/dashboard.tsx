@@ -45,7 +45,7 @@ export function Dashboard({ data, storeType, onStoreTypeChange }: { data: Dashbo
       {onStoreTypeChange && (
         <div className="bg-white rounded-xl p-4 border border-gray-100">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-sm text-gray-500">门店类型:</span>
+            <span className="text-sm text-gray-500">门店标签:</span>
             {STORE_TYPES.map(type => (
               <button
                 key={type}
