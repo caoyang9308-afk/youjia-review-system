@@ -23,6 +23,13 @@ interface DesignTask {
   _priority?: string;
 }
 
+interface StoreGroup {
+  submissionId: string;
+  storeName: string;
+  area: string;
+  tasks: DesignTask[];
+}
+
 const STATUS_OPTIONS = [
   { value: 'pending', label: '待设计', color: '#faad14', bg: '#fffbe6' },
   { value: 'designing', label: '设计中', color: '#722ed1', bg: '#f9f0ff' },
@@ -48,6 +55,7 @@ export function DesignPanel({ onDataChange }: { onDataChange: () => void }) {
   const [editingNote, setEditingNote] = useState<string | null>(null);
   const [noteText, setNoteText] = useState('');
   const [saving, setSaving] = useState(false);
+  const [expandedStore, setExpandedStore] = useState<string | null>(null);
 
   const allImages = tasks.map(t => ({
     id: t.review_items?.images?.id || '',
@@ -181,13 +189,23 @@ export function DesignPanel({ onDataChange }: { onDataChange: () => void }) {
     }
   };
 
-  // Group by category (translate English keys to Chinese)
-  const groupedTasks: Record<string, DesignTask[]> = {};
+  // Group by store
+  const storeMap = new Map<string, StoreGroup>();
   tasks.forEach(task => {
-    const cat = toChineseCategory(task.review_items?.category ?? '其他');
-    if (!groupedTasks[cat]) groupedTasks[cat] = [];
-    groupedTasks[cat].push(task);
+    const submission = task.review_items?.submissions;
+    if (!submission) return;
+    const storeId = submission.id;
+    if (!storeMap.has(storeId)) {
+      storeMap.set(storeId, {
+        submissionId: storeId,
+        storeName: submission.store_name,
+        area: submission.area,
+        tasks: [],
+      });
+    }
+    storeMap.get(storeId)!.tasks.push(task);
   });
+  const storeGroups = Array.from(storeMap.values());
 
   if (loading) {
     return (
@@ -245,7 +263,7 @@ export function DesignPanel({ onDataChange }: { onDataChange: () => void }) {
           {[
             { value: 'all', label: '全部' },
             { value: 'urgent', label: '🔄 立即更换' },
-            { value: 'scheduled', label: '📅 择期更换' },
+            { value: 'scheduled', label: ' 择期更换' },
           ].map(p => (
             <button
               key={p.value}
@@ -267,158 +285,202 @@ export function DesignPanel({ onDataChange }: { onDataChange: () => void }) {
         </div>
       </div>
 
-      {/* Tasks by Category */}
-      {Object.entries(groupedTasks).map(([category, categoryTasks]) => (
-        <div key={category} className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-          <div className="px-5 py-3 border-b border-gray-50 bg-gray-50/50">
-            <h3 className="text-sm font-semibold text-gray-700">{category} ({categoryTasks.length})</h3>
-          </div>
-          <div className="divide-y divide-gray-50">
-            {categoryTasks.map(task => {
-              const submission = task.review_items?.submissions;
-              const image = task.review_items?.images;
-              const statusInfo = STATUS_OPTIONS.find(s => s.value === task.design_status) ?? STATUS_OPTIONS[0];
+      {/* Stores */}
+      {storeGroups.map(store => {
+        const isExpanded = expandedStore === store.submissionId;
+        const completedCount = store.tasks.filter(t => t.design_status === 'confirmed').length;
+        const totalCount = store.tasks.length;
 
-              return (
-                <div key={task.id} className="px-5 py-4">
-                  <div className="flex flex-col sm:flex-row gap-4">
-                    {/* Original Image */}
-                    <div className="shrink-0">
-                      <div
-                        className="w-24 h-24 rounded-lg overflow-hidden bg-gray-50 cursor-pointer"
-                        onClick={() => image?.image_url && setPreviewImage({ id: image.id, submissionId: submission?.id || '', url: image.image_url, category: task.review_items?.category || '', storeName: submission?.store_name || '', area: submission?.area || '' })}
-                      >
-                        {image?.image_url ? (
-                          <img src={image.image_url} alt="原图" className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-gray-300">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                              <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                              <circle cx="8.5" cy="8.5" r="1.5" />
-                              <polyline points="21 15 16 10 5 21" />
-                            </svg>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Info */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2 mb-2">
-                        <div>
-                          <div className="font-medium text-gray-900">{submission?.store_name ?? '未知门店'}</div>
-                          <div className="text-xs text-gray-500">{submission?.area} · {category}</div>
-                        </div>
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          {task._priority === 'scheduled' && (
-                            <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[#fffbe6] text-[#faad14]">
-                              📅 择期更换
-                            </span>
-                          )}
-                          <span
-                            className="px-2.5 py-0.5 rounded-full text-xs font-medium"
-                            style={{ backgroundColor: statusInfo.bg, color: statusInfo.color }}
-                          >
-                            {statusInfo.label}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Actions */}
-                      {task._priority === 'scheduled' ? (
-                        <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-100">
-                          <span className="text-xs text-gray-400">📅 择期更换 — 暂不设计，仅标记</span>
-                          <button
-                            onClick={() => handleMarkUrgent(task.review_item_id)}
-                            disabled={saving}
-                            className="ml-auto px-3 py-1.5 bg-[#ff4d4f] text-white text-xs rounded-lg hover:bg-[#ff7875] disabled:opacity-50 transition-colors"
-                          >
-                            标记为立即更换
-                          </button>
-                        </div>
-                      ) : (
-                      <>
-                      {/* Design Preview */}
-                      <div className="flex items-center gap-3 mb-2">
-                        {task.design_url ? (
-                          <div
-                            className="w-16 h-16 rounded-lg overflow-hidden bg-gray-50 cursor-pointer border-2 border-[#1677ff]"
-                            onClick={() => setPreviewImage({ id: task.id, submissionId: submission?.id || '', url: task.design_url!, category: task.review_items?.category || '', storeName: submission?.store_name || '', area: submission?.area || '' })}
-                          >
-                            <img src={task.design_url} alt="设计稿" className="w-full h-full object-cover" />
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => handleUploadDesign(task.id)}
-                            disabled={saving}
-                            className="w-16 h-16 rounded-lg border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-400 hover:border-[#1677ff] hover:text-[#1677ff] transition-colors"
-                          >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <line x1="12" y1="5" x2="12" y2="19" />
-                              <line x1="5" y1="12" x2="19" y2="12" />
-                            </svg>
-                            <span className="text-[10px] mt-0.5">上传</span>
-                          </button>
-                        )}
-
-                        {/* Status Selector */}
-                        <select
-                          value={task.design_status}
-                          onChange={(e) => handleStatusChange(task.id, e.target.value)}
-                          disabled={saving}
-                          className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1677ff]/20 focus:border-[#1677ff]"
-                        >
-                          {STATUS_OPTIONS.map(opt => (
-                            <option key={opt.value} value={opt.value}>{opt.label}</option>
-                          ))}
-                        </select>
-                      </div>
-
-                      {/* Note */}
-                      <div className="flex items-center gap-2">
-                        {editingNote === task.id ? (
-                          <div className="flex items-center gap-2 flex-1">
-                            <input
-                              type="text"
-                              value={noteText}
-                              onChange={(e) => setNoteText(e.target.value)}
-                              placeholder="输入设计师备注..."
-                              className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#1677ff]/20 focus:border-[#1677ff]"
-                              autoFocus
-                            />
-                            <button
-                              onClick={() => handleSaveNote(task.id)}
-                              disabled={saving}
-                              className="px-3 py-1.5 bg-[#1677ff] text-white text-xs rounded-lg hover:bg-[#4096ff] disabled:opacity-50"
-                            >
-                              保存
-                            </button>
-                            <button
-                              onClick={() => setEditingNote(null)}
-                              className="px-3 py-1.5 bg-gray-100 text-gray-600 text-xs rounded-lg hover:bg-gray-200"
-                            >
-                              取消
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => { setEditingNote(task.id); setNoteText(task.designer_note ?? ''); }}
-                            className="text-xs text-gray-400 hover:text-[#1677ff] transition-colors"
-                          >
-                            {task.designer_note ? `备注: ${task.designer_note}` : '+ 添加备注'}
-                          </button>
-                        )}
-                      </div>
-                      </>
-                      )}
-                    </div>
-                  </div>
+        return (
+          <div key={store.submissionId} className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+            {/* Store Header */}
+            <button
+              onClick={() => setExpandedStore(isExpanded ? null : store.submissionId)}
+              className="w-full px-5 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-[#f9f0ff] flex items-center justify-center">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#722ed1" strokeWidth="2">
+                    <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                    <path d="M2 17l10 5 10-5" />
+                    <path d="M2 12l10 5 10-5" />
+                  </svg>
                 </div>
-              );
-            })}
+                <div className="text-left">
+                  <div className="font-medium text-gray-900">{store.storeName}</div>
+                  <div className="text-xs text-gray-500">{store.area} · {totalCount} 个设计任务</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="text-right">
+                  <div className="text-sm font-medium text-gray-700">{completedCount}/{totalCount}</div>
+                  <div className="text-xs text-gray-400">已确认</div>
+                </div>
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  className={`text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                >
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </div>
+            </button>
+
+            {/* Expanded Content */}
+            {isExpanded && (
+              <div className="px-5 pb-5 border-t border-gray-50">
+                <div className="divide-y divide-gray-50">
+                  {store.tasks.map(task => {
+                    const image = task.review_items?.images;
+                    const category = toChineseCategory(task.review_items?.category ?? '其他');
+                    const statusInfo = STATUS_OPTIONS.find(s => s.value === task.design_status) ?? STATUS_OPTIONS[0];
+
+                    return (
+                      <div key={task.id} className="py-4">
+                        <div className="flex flex-col sm:flex-row gap-4">
+                          {/* Original Image */}
+                          <div className="shrink-0">
+                            <div
+                              className="w-24 h-24 rounded-lg overflow-hidden bg-gray-50 cursor-pointer"
+                              onClick={() => image?.image_url && setPreviewImage({ id: image.id, submissionId: store.submissionId, url: image.image_url, category: task.review_items?.category || '', storeName: store.storeName, area: store.area })}
+                            >
+                              {image?.image_url ? (
+                                <img src={image.image_url} alt="原图" className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-gray-300">
+                                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                                    <circle cx="8.5" cy="8.5" r="1.5" />
+                                    <polyline points="21 15 16 10 5 21" />
+                                  </svg>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Info */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-2 mb-2">
+                              <div>
+                                <div className="text-sm font-medium text-gray-700">{category}</div>
+                                <div className="flex items-center gap-1.5 mt-1">
+                                  {task._priority === 'scheduled' && (
+                                    <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[#fffbe6] text-[#faad14]">
+                                      📅 择期更换
+                                    </span>
+                                  )}
+                                  <span
+                                    className="px-2.5 py-0.5 rounded-full text-xs font-medium"
+                                    style={{ backgroundColor: statusInfo.bg, color: statusInfo.color }}
+                                  >
+                                    {statusInfo.label}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Actions */}
+                            {task._priority === 'scheduled' ? (
+                              <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-100">
+                                <span className="text-xs text-gray-400">📅 择期更换 — 暂不设计，仅标记</span>
+                                <button
+                                  onClick={() => handleMarkUrgent(task.review_item_id)}
+                                  disabled={saving}
+                                  className="ml-auto px-3 py-1.5 bg-[#ff4d4f] text-white text-xs rounded-lg hover:bg-[#ff7875] disabled:opacity-50 transition-colors"
+                                >
+                                  标记为立即更换
+                                </button>
+                              </div>
+                            ) : (
+                            <>
+                            {/* Design Preview */}
+                            <div className="flex items-center gap-3 mb-2">
+                              {task.design_url ? (
+                                <div
+                                  className="w-16 h-16 rounded-lg overflow-hidden bg-gray-50 cursor-pointer border-2 border-[#1677ff]"
+                                  onClick={() => setPreviewImage({ id: task.id, submissionId: store.submissionId, url: task.design_url!, category: task.review_items?.category || '', storeName: store.storeName, area: store.area })}
+                                >
+                                  <img src={task.design_url} alt="设计稿" className="w-full h-full object-cover" />
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={() => handleUploadDesign(task.id)}
+                                  disabled={saving}
+                                  className="w-16 h-16 rounded-lg border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-400 hover:border-[#1677ff] hover:text-[#1677ff] transition-colors"
+                                >
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <line x1="12" y1="5" x2="12" y2="19" />
+                                    <line x1="5" y1="12" x2="19" y2="12" />
+                                  </svg>
+                                  <span className="text-[10px] mt-0.5">上传</span>
+                                </button>
+                              )}
+
+                              {/* Status Selector */}
+                              <select
+                                value={task.design_status}
+                                onChange={(e) => handleStatusChange(task.id, e.target.value)}
+                                disabled={saving}
+                                className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1677ff]/20 focus:border-[#1677ff]"
+                              >
+                                {STATUS_OPTIONS.map(opt => (
+                                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                ))}
+                              </select>
+                            </div>
+
+                            {/* Note */}
+                            <div className="flex items-center gap-2">
+                              {editingNote === task.id ? (
+                                <div className="flex items-center gap-2 flex-1">
+                                  <input
+                                    type="text"
+                                    value={noteText}
+                                    onChange={(e) => setNoteText(e.target.value)}
+                                    placeholder="输入设计师备注..."
+                                    className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#1677ff]/20 focus:border-[#1677ff]"
+                                    autoFocus
+                                  />
+                                  <button
+                                    onClick={() => handleSaveNote(task.id)}
+                                    disabled={saving}
+                                    className="px-3 py-1.5 bg-[#1677ff] text-white text-xs rounded-lg hover:bg-[#4096ff] disabled:opacity-50"
+                                  >
+                                    保存
+                                  </button>
+                                  <button
+                                    onClick={() => setEditingNote(null)}
+                                    className="px-3 py-1.5 bg-gray-100 text-gray-600 text-xs rounded-lg hover:bg-gray-200"
+                                  >
+                                    取消
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={() => { setEditingNote(task.id); setNoteText(task.designer_note ?? ''); }}
+                                  className="text-xs text-gray-400 hover:text-[#1677ff] transition-colors"
+                                >
+                                  {task.designer_note ? `备注：${task.designer_note}` : '+ 添加备注'}
+                                </button>
+                              )}
+                            </div>
+                            </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
-        </div>
-      ))}
+        );
+      })}
 
       {/* Image Preview */}
       {previewImage && (
