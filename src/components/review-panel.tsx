@@ -225,6 +225,7 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
   };
 
   const handleBatchApprove = async (images: Image[]) => {
+    // Separate pending and uninitialized images
     const pendingItems = images
       .filter(img => getReviewStatus(img.id) === 'pending')
       .map(img => ({
@@ -233,22 +234,65 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
       }))
       .filter(item => item.id);
 
-    if (pendingItems.length === 0) return;
+    const uninitializedImages = images.filter(img => getReviewStatus(img.id) === 'uninitialized');
+
+    if (pendingItems.length === 0 && uninitializedImages.length === 0) return;
 
     setSaving(true);
     try {
-      const res = await fetch('/api/review', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'batch_update',
-          items: pendingItems,
-        }),
-      });
-      const json = await res.json();
-      if (json.success) {
-        await fetchData();
-        onDataChange();
+      // First, initialize uninitialized images
+      if (uninitializedImages.length > 0) {
+        const initRes = await fetch('/api/review', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'batch_create',
+            submission_id: images[0]?.submission_id,
+            image_ids: uninitializedImages.map(img => img.id),
+          }),
+        });
+        const initJson = await initRes.json();
+        if (initJson.success) {
+          await fetchData();
+          // After initialization, approve all images
+          const allItems = images
+            .map(img => ({
+              id: getReviewItemId(img.id),
+              review_status: 'approved' as const,
+            }))
+            .filter(item => item.id);
+
+          if (allItems.length > 0) {
+            const res = await fetch('/api/review', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                action: 'batch_update',
+                items: allItems,
+              }),
+            });
+            const json = await res.json();
+            if (json.success) {
+              await fetchData();
+              onDataChange();
+            }
+          }
+        }
+      } else {
+        // Only approve pending items
+        const res = await fetch('/api/review', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'batch_update',
+            items: pendingItems,
+          }),
+        });
+        const json = await res.json();
+        if (json.success) {
+          await fetchData();
+          onDataChange();
+        }
       }
     } catch {
       // silently handle
