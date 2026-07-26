@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { ImagePreview, type ImagePreviewData } from './image-preview';
 import { CATEGORIES_ZH, CATEGORY_REVERSE_MAP, CATEGORY_MAP, AREAS, STORE_TYPES, REVIEW_TAGS, REVIEW_ACTIONS, smartSearchMatch } from '@/lib/constants';
 
@@ -8,6 +8,7 @@ interface Image {
   id: string;
   category: string;
   image_url: string;
+  submission_id?: string;
 }
 
 interface Submission {
