@@ -785,13 +785,14 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
                       setShowTagDialog(false);
                       setSelectedStore(null);
                       await fetchData();
-                      // 滚动到当前门店位置
+                      // 等待 DOM 更新后再滚动
                       setTimeout(() => {
                         const storeElement = containerRef.current?.querySelector(`[data-store-id="${storeId}"]`);
                         if (storeElement) {
-                          storeElement.scrollIntoView({ behavior: 'auto', block: 'start' });
+                          const offset = storeElement.getBoundingClientRect().top + window.scrollY - 100;
+                          window.scrollTo({ top: offset, behavior: 'auto' });
                         }
-                      }, 100);
+                      }, 200);
                     } else {
                       alert(data.error || '保存标签失败');
                     }
