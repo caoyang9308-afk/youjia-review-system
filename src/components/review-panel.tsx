@@ -54,6 +54,7 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
   const [searchQuery, setSearchQuery] = useState('');
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const scrollPositionRef = useRef<number>(0);
+  const restoreScrollRef = useRef<string | null>(null);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -72,6 +73,19 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
       const revJson = await revRes.json();
       if (subJson.success) setSubmissions(subJson.data);
       if (revJson.success) setReviewItems(revJson.data);
+      
+      // 恢复滚动位置
+      if (restoreScrollRef.current) {
+        const storeId = restoreScrollRef.current;
+        setTimeout(() => {
+          const storeElement = document.querySelector(`[data-store-id="${storeId}"]`);
+          if (storeElement) {
+            const offset = storeElement.getBoundingClientRect().top + window.scrollY - 100;
+            window.scrollTo({ top: offset, behavior: 'auto' });
+          }
+          restoreScrollRef.current = null;
+        }, 100);
+      }
     } catch {
       // silently handle
     } finally {
@@ -784,15 +798,9 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
                       const storeId = selectedStore.id;
                       setShowTagDialog(false);
                       setSelectedStore(null);
+                      // 设置恢复滚动位置
+                      restoreScrollRef.current = storeId;
                       await fetchData();
-                      // 等待 DOM 更新后再滚动
-                      setTimeout(() => {
-                        const storeElement = containerRef.current?.querySelector(`[data-store-id="${storeId}"]`);
-                        if (storeElement) {
-                          const offset = storeElement.getBoundingClientRect().top + window.scrollY - 100;
-                          window.scrollTo({ top: offset, behavior: 'auto' });
-                        }
-                      }, 200);
                     } else {
                       alert(data.error || '保存标签失败');
                     }
