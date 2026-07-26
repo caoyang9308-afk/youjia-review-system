@@ -51,6 +51,8 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
   const [previewImage, setPreviewImage] = useState<ImagePreviewData | null>(null);
   const [saving, setSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const scrollPositionRef = useRef<number>(0);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -139,6 +141,10 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
   };
 
   const handlePreviewReview = async (imageId: string, status: string, priority?: string, submissionId?: string, category?: string, tags?: string[]) => {
+    // Save scroll position before review
+    if (scrollContainerRef.current) {
+      scrollPositionRef.current = scrollContainerRef.current.scrollTop;
+    }
     setSaving(true);
     try {
       const res = await fetch('/api/review', {
@@ -168,6 +174,12 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
       // silently handle
     } finally {
       setSaving(false);
+      // Restore scroll position after review
+      if (scrollContainerRef.current) {
+        setTimeout(() => {
+          scrollContainerRef.current!.scrollTop = scrollPositionRef.current;
+        }, 100);
+      }
     }
   };
 
@@ -344,7 +356,7 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
   }
 
   return (
-    <div className="space-y-4">
+    <div ref={scrollContainerRef} className="space-y-4">
       {/* Area Filter Tabs */}
       <div className="bg-white rounded-xl p-4 border border-gray-100">
         <div className="flex flex-wrap gap-2 mb-3">
