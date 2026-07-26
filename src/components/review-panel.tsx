@@ -781,9 +781,17 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
                     });
                     const data = await res.json();
                     if (data.success) {
+                      const storeId = selectedStore.id;
                       setShowTagDialog(false);
                       setSelectedStore(null);
-                      fetchData();
+                      await fetchData();
+                      // 滚动到当前门店位置
+                      setTimeout(() => {
+                        const storeElement = containerRef.current?.querySelector(`[data-store-id="${storeId}"]`);
+                        if (storeElement) {
+                          storeElement.scrollIntoView({ behavior: 'auto', block: 'start' });
+                        }
+                      }, 100);
                     } else {
                       alert(data.error || '保存标签失败');
                     }
