@@ -214,9 +214,11 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
       if (json.success) {
         await fetchData();
         onDataChange();
+      } else {
+        alert(`初始化失败：${json.error || '未知错误'}`);
       }
-    } catch {
-      // silently handle
+    } catch (err) {
+      alert(`初始化失败：${err instanceof Error ? err.message : '网络错误'}`);
     } finally {
       setSaving(false);
     }
