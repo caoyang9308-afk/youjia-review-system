@@ -142,10 +142,11 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
   };
 
   const handlePreviewReview = async (imageId: string, status: string, priority?: string, submissionId?: string, category?: string, tags?: string[]) => {
-    // Save scroll position before review
+    // Save scroll position and the current store ID before review
     if (scrollContainerRef.current) {
       scrollPositionRef.current = scrollContainerRef.current.scrollTop;
     }
+    const currentStoreId = selectedStore?.id;
     setSaving(true);
     try {
       const res = await fetch('/api/review', {
@@ -175,11 +176,19 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
       // silently handle
     } finally {
       setSaving(false);
-      // Restore scroll position after review
+      // Restore scroll position after review, or scroll to the current store
       if (scrollContainerRef.current) {
         setTimeout(() => {
-          scrollContainerRef.current!.scrollTop = scrollPositionRef.current;
-        }, 100);
+          if (currentStoreId) {
+            // Try to scroll to the current store card
+            const storeElement = scrollContainerRef.current?.querySelector(`[data-store-id="${currentStoreId}"]`);
+            if (storeElement) {
+              storeElement.scrollIntoView({ block: 'start', behavior: 'smooth' });
+            } else if (scrollPositionRef.current > 0) {
+              scrollContainerRef.current!.scrollTop = scrollPositionRef.current;
+            }
+          }
+        }, 200);
       }
     }
   };
@@ -478,7 +487,7 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
           if (searchQuery && storeImages.length === 0) return null;
 
           return (
-            <div key={submission.id} className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+            <div key={submission.id} data-store-id={submission.id} className="bg-white rounded-xl border border-gray-100 overflow-hidden">
               {/* Store Header */}
               <button
                 onClick={() => {
