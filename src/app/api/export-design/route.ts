@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/storage/database/supabase-client-simple';
+import { supabaseAdmin } from '../../../storage/database/supabase-client-simple';
 import ExcelJS from 'exceljs';
 
 export async function GET() {
@@ -7,8 +7,7 @@ export async function GET() {
     // 获取所有设计任务
     const { data: designTasks, error: designError } = await supabaseAdmin
       .from('design_tasks')
-      .select('id, review_item_id, design_status, design_url, designer_note, priority, created_at, completed_at')
-      .order('created_at', { ascending: false });
+      .select('*').order('created_at', { ascending: false });
 
     if (designError) {
       console.error('Design tasks error:', designError);
@@ -75,12 +74,6 @@ export async function GET() {
           completed: '设计完成',
         };
 
-        // 优先级映射
-        const priorityMap: Record<string, string> = {
-          high: '高',
-          medium: '中',
-          low: '低',
-        };
 
         sheet.addRow([
           storeName,
@@ -89,9 +82,7 @@ export async function GET() {
           originalImage,
           task.design_url || '',
           statusMap[task.design_status] || task.design_status,
-          priorityMap[task.priority || 'medium'] || '中',
           task.created_at ? new Date(task.created_at).toLocaleString('zh-CN') : '',
-          task.completed_at ? new Date(task.completed_at).toLocaleString('zh-CN') : '',
         ]);
       }
     }
