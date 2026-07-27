@@ -76,11 +76,10 @@ export function DesignPanel({ onDataChange }: { onDataChange: () => void }) {
     setExporting(true);
     setExportMessage('');
     try {
-      const response = await fetch('/api/export-design', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ statusFilter, priorityFilter }),
-      });
+      const params = new URLSearchParams();
+      if (statusFilter) params.append('status', statusFilter);
+      if (priorityFilter) params.append('priority', priorityFilter);
+      const response = await fetch(`/api/export-design?${params.toString()}`);
       if (!response.ok) throw new Error('导出失败');
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
