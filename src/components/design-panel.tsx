@@ -56,6 +56,8 @@ export function DesignPanel({ onDataChange }: { onDataChange: () => void }) {
   const [noteText, setNoteText] = useState('');
   const [saving, setSaving] = useState(false);
   const [expandedStore, setExpandedStore] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const [exportMessage, setExportMessage] = useState('');
 
   const allImages = tasks.map(t => ({
     id: t.review_items?.images?.id || '',
@@ -68,6 +70,33 @@ export function DesignPanel({ onDataChange }: { onDataChange: () => void }) {
   const handleNavigateImage = (imageId: string) => {
     const img = allImages.find(i => i.id === imageId);
     if (img) setPreviewImage(img);
+  };
+
+  const handleExport = async () => {
+    setExporting(true);
+    setExportMessage('');
+    try {
+      const response = await fetch('/api/export-design', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ statusFilter, priorityFilter }),
+      });
+      if (!response.ok) throw new Error('导出失败');
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `设计跟踪_${new Date().toISOString().split('T')[0]}.xlsx`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+      setExportMessage('导出成功！');
+      setTimeout(() => setExportMessage(''), 3000);
+    } catch (error) {
+      setExportMessage('导出失败，请重试');
+      console.error('Export error:', error);
+    } finally {
+      setExporting(false);
+    }
   };
 
   const fetchTasks = useCallback(async () => {
@@ -283,6 +312,13 @@ export function DesignPanel({ onDataChange }: { onDataChange: () => void }) {
             </button>
           ))}
         </div>
+        <button
+          onClick={handleExport}
+          disabled={exporting}
+          className="px-4 py-2 bg-[#52c41a] text-white rounded-lg text-sm font-medium hover:bg-[#389e0d] transition-colors disabled:opacity-50"
+        >
+          {exporting ? '导出中...' : ' 导出 Excel'}
+        </button>
       </div>
 
       {/* Stores */}
