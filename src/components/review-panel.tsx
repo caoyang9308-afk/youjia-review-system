@@ -488,6 +488,13 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
           })
           .map(submission => {
           const isExpanded = expandedStore === submission.id;
+          // 检查门店名、区域、备注是否匹配
+          const q = searchQuery.toLowerCase();
+          const storeInfoMatch = !searchQuery || 
+            submission.store_name?.toLowerCase().includes(q) ||
+            submission.area?.toLowerCase().includes(q) ||
+            submission.remark?.toLowerCase().includes(q);
+          
           // 搜索时只显示匹配的图片
           const storeImages = searchQuery
             ? submission.images.filter(img => smartSearchMatch(searchQuery, categoryDisplay(img.category)))
@@ -497,8 +504,8 @@ export function ReviewPanel({ onDataChange }: { onDataChange: () => void }) {
           const storeTotal = storeImages.length;
           const hasReviewItems = storeReviewItems.length > 0;
 
-          // 搜索时如果没有匹配的图片，跳过该门店
-          if (searchQuery && storeImages.length === 0) return null;
+          // 搜索时如果门店信息不匹配且没有匹配的图片，跳过该门店
+          if (searchQuery && !storeInfoMatch && storeImages.length === 0) return null;
 
           return (
             <div key={submission.id} data-store-id={submission.id} className="bg-white rounded-xl border border-gray-100 overflow-hidden">
